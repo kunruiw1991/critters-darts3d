@@ -77,27 +77,114 @@ export const CRITTER_META = {
   },
 };
 
+/**
+ * 7-Stage Progressive Carnival Difficulty System (Gentle for a 5-year-old):
+ * - Stage 1: Classic Gentle Spin + Smaller Critters (~50% board area) + Parabolic Curve & Lead
+ * - Stage 2: + 3D Orbiting Obstacle Shields in front of board ("第二关有遮挡物")
+ * - Stage 3: + Whole Dartboard Glides Slowly Side-to-Side ("第三关盘子整体缓速移动")
+ * - Stage 4: + Bad Baba Chops Hazard Targets (-25 pts) ("第四关有baba chops是坏的 射中负分")
+ * - Stage 5: Fusion 1 — 3D Obstacle Shields + Slow Gliding Board
+ * - Stage 6: Fusion 2 — 3D Obstacle Shields + Bad Baba Chops
+ * - Stage 7: Grand Finale Fusion — 3D Obstacles + Slow Gliding Board + Bad Baba Chops
+ */
 export const STAGE_LAYOUTS = {
   1: {
-    wheelSpeed: 0.52,
+    wheelSpeed: 0.36,
     centerCritter: 'bobby',
-    outerCritters: ['catnap', 'dogday', 'hoppy', 'craftycorn', 'picky', 'bubba'],
-    outerRadius: 1.62,
+    outerCritters: ['dogday', 'catnap', 'hoppy', 'craftycorn', 'picky'],
+    outerRadius: 1.54,
     bobAmplitude: 0.0,
+    obstacles: 0,
+    obstacleSpeed: 0.0,
+    obstacleRadius: 1.48,
+    moveAmpX: 0.0,
+    moveAmpY: 0.0,
+    moveSpeed: 0.0,
+    badBabaIndices: [],
   },
   2: {
-    wheelSpeed: 0.68,
+    wheelSpeed: 0.38,
     centerCritter: 'craftycorn',
-    outerCritters: ['dogday', 'catnap', 'kickin', 'baba', 'bobby', 'hoppy'],
-    outerRadius: 1.64,
-    bobAmplitude: 0.14,
+    outerCritters: ['dogday', 'catnap', 'bobby', 'hoppy', 'bubba'],
+    outerRadius: 1.54,
+    bobAmplitude: 0.0,
+    obstacles: 2,
+    obstacleSpeed: -0.50,
+    obstacleRadius: 1.48,
+    moveAmpX: 0.0,
+    moveAmpY: 0.0,
+    moveSpeed: 0.0,
+    badBabaIndices: [],
   },
   3: {
-    wheelSpeed: 0.78,
+    wheelSpeed: 0.36,
     centerCritter: 'catnap',
-    outerCritters: ['dogday', 'bobby', 'hoppy', 'craftycorn', 'picky', 'bubba', 'kickin', 'baba'],
-    outerRadius: 1.70,
-    bobAmplitude: 0.16,
+    outerCritters: ['dogday', 'bobby', 'hoppy', 'craftycorn', 'kickin'],
+    outerRadius: 1.54,
+    bobAmplitude: 0.0,
+    obstacles: 0,
+    obstacleSpeed: 0.0,
+    obstacleRadius: 1.48,
+    moveAmpX: 1.05,
+    moveAmpY: 0.22,
+    moveSpeed: 0.56,
+    badBabaIndices: [],
+  },
+  4: {
+    wheelSpeed: 0.40,
+    centerCritter: 'dogday',
+    outerCritters: ['catnap', 'baba', 'hoppy', 'bobby', 'baba', 'craftycorn'],
+    outerRadius: 1.56,
+    bobAmplitude: 0.0,
+    obstacles: 0,
+    obstacleSpeed: 0.0,
+    obstacleRadius: 1.48,
+    moveAmpX: 0.0,
+    moveAmpY: 0.0,
+    moveSpeed: 0.0,
+    badBabaIndices: [1, 4],
+  },
+  5: {
+    wheelSpeed: 0.38,
+    centerCritter: 'hoppy',
+    outerCritters: ['dogday', 'catnap', 'bobby', 'craftycorn', 'picky'],
+    outerRadius: 1.54,
+    bobAmplitude: 0.0,
+    obstacles: 2,
+    obstacleSpeed: -0.46,
+    obstacleRadius: 1.48,
+    moveAmpX: 0.88,
+    moveAmpY: 0.18,
+    moveSpeed: 0.50,
+    badBabaIndices: [],
+  },
+  6: {
+    wheelSpeed: 0.40,
+    centerCritter: 'picky',
+    outerCritters: ['dogday', 'baba', 'catnap', 'hoppy', 'baba', 'bobby'],
+    outerRadius: 1.56,
+    bobAmplitude: 0.0,
+    obstacles: 2,
+    obstacleSpeed: -0.46,
+    obstacleRadius: 1.48,
+    moveAmpX: 0.0,
+    moveAmpY: 0.0,
+    moveSpeed: 0.0,
+    badBabaIndices: [1, 4],
+  },
+  7: {
+    wheelSpeed: 0.40,
+    centerCritter: 'craftycorn',
+    outerCritters: ['dogday', 'baba', 'catnap', 'hoppy', 'bobby', 'kickin'],
+    outerRadius: 1.56,
+    bobAmplitude: 0.05,
+    obstacles: 2,
+    obstacleSpeed: -0.44,
+    obstacleRadius: 1.48,
+    moveAmpX: 0.80,
+    moveAmpY: 0.16,
+    moveSpeed: 0.46,
+    badBabaIndices: [1],
   },
 };
 
@@ -164,7 +251,7 @@ function createDartboardFaceTexture() {
 
   ctx.clearRect(0, 0, size, size);
 
-  // 12 cheerful carnival radial wedges
+  // 12 cheerful carnival radial wedges (clearly visible around the smaller ~50%-area Critter pads)
   const sectorColors = [
     '#fffdf9', '#ffe4e6',
     '#fffdf9', '#e0f2fe',
@@ -184,16 +271,16 @@ function createDartboardFaceTexture() {
     ctx.fillStyle = sectorColors[i % sectorColors.length];
     ctx.fill();
     ctx.lineWidth = 4;
-    ctx.strokeStyle = 'rgba(124, 74, 45, 0.18)';
+    ctx.strokeStyle = 'rgba(124, 74, 45, 0.22)';
     ctx.stroke();
   }
 
   // Concentric target scoring rings
   const rings = [
     { r: maxR * 0.96, stroke: '#fb7185', width: 22 },
-    { r: maxR * 0.72, stroke: '#38bdf8', width: 18 },
-    { r: maxR * 0.46, stroke: '#34d399', width: 18 },
-    { r: maxR * 0.25, stroke: '#f59e0b', width: 20 },
+    { r: maxR * 0.72, stroke: '#38bdf8', width: 16 },
+    { r: maxR * 0.46, stroke: '#34d399', width: 16 },
+    { r: maxR * 0.23, stroke: '#f59e0b', width: 18 },
   ];
   for (const ring of rings) {
     ctx.beginPath();
@@ -205,10 +292,10 @@ function createDartboardFaceTexture() {
 
   // Center golden star bullseye
   ctx.beginPath();
-  ctx.arc(cx, cy, maxR * 0.22, 0, Math.PI * 2);
+  ctx.arc(cx, cy, maxR * 0.19, 0, Math.PI * 2);
   ctx.fillStyle = '#fef08a';
   ctx.fill();
-  ctx.lineWidth = 8;
+  ctx.lineWidth = 7;
   ctx.strokeStyle = '#d97706';
   ctx.stroke();
 
@@ -246,10 +333,11 @@ function createWoodStageTexture() {
 }
 
 /**
- * Creates a high-resolution 512x512 RGBA texture for a Smiling Critter target medallion
- * with vibrant plush shading, clean cocoa/gold frame, and automatic image load upgrade.
+ * Creates a high-resolution 512x512 RGBA texture for a Smiling Critter target medallion.
+ * When isBad === true (Bad Baba Chops in Stage 4+), adds a distinct crimson-purple hazard
+ * warning aura, angry V-brows, and a clear red X badge so a 5-year-old immediately sees she is a hazard!
  */
-function createCritterTargetTexture(renderer, critterId) {
+function createCritterTargetTexture(renderer, critterId, isBad = false) {
   const size = 512;
   const canvas = document.createElement('canvas');
   canvas.width = size;
@@ -266,13 +354,19 @@ function createCritterTargetTexture(renderer, critterId) {
   function draw(img) {
     ctx.clearRect(0, 0, size, size);
 
-    // Soft circular pastel halo behind the Critter plush so transparency pops cleanly
     const cx = size / 2;
     const cy = size / 2;
-    const radGrad = ctx.createRadialGradient(cx, cy - 12, 30, cx, cy, 232);
-    radGrad.addColorStop(0.0, '#ffffff');
-    radGrad.addColorStop(0.72, meta.badgeBg || '#fffbeb');
-    radGrad.addColorStop(1.0, 'rgba(255, 255, 255, 0.0)');
+    const radGrad = ctx.createRadialGradient(cx, cy - 12, 30, cx, cy, 234);
+    if (isBad) {
+      radGrad.addColorStop(0.0, '#ffe4e6');
+      radGrad.addColorStop(0.68, '#fda4af');
+      radGrad.addColorStop(0.92, '#be123c');
+      radGrad.addColorStop(1.0, 'rgba(190, 18, 60, 0.0)');
+    } else {
+      radGrad.addColorStop(0.0, '#ffffff');
+      radGrad.addColorStop(0.72, meta.badgeBg || '#fffbeb');
+      radGrad.addColorStop(1.0, 'rgba(255, 255, 255, 0.0)');
+    }
     ctx.beginPath();
     ctx.arc(cx, cy, 236, 0, Math.PI * 2);
     ctx.fillStyle = radGrad;
@@ -280,16 +374,14 @@ function createCritterTargetTexture(renderer, critterId) {
 
     if (img && img.naturalWidth > 0 && img.naturalHeight > 0) {
       ctx.save();
-      // Crisp drop shadow so the 3D plush pops off the target cushion
-      ctx.shadowColor = 'rgba(45, 23, 12, 0.38)';
+      ctx.shadowColor = isBad ? 'rgba(136, 19, 55, 0.55)' : 'rgba(45, 23, 12, 0.38)';
       ctx.shadowBlur = 18;
       ctx.shadowOffsetY = 8;
-      const pad = 18;
+      const pad = 22;
       ctx.drawImage(img, pad, pad, size - pad * 2, size - pad * 2);
       ctx.restore();
     } else {
-      // Immediate fallback before PNG finishes loading
-      const hex = meta.colorHex;
+      const hex = isBad ? 0xe11d48 : meta.colorHex;
       const r = (hex >> 16) & 255;
       const g = (hex >> 8) & 255;
       const b = hex & 255;
@@ -297,6 +389,51 @@ function createCritterTargetTexture(renderer, critterId) {
       ctx.beginPath();
       ctx.arc(cx, cy, 170, 0, Math.PI * 2);
       ctx.fill();
+    }
+
+    // If this is Naughty/Bad Baba Chops (Stage 4+), draw a bold mischievous warning overlay
+    if (isBad) {
+      // Dashed red-and-yellow hazard border ring
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(cx, cy, 224, 0, Math.PI * 2);
+      ctx.lineWidth = 16;
+      ctx.setLineDash([28, 18]);
+      ctx.strokeStyle = '#e11d48';
+      ctx.stroke();
+
+      // Mischievous angled eyebrows over Baba's eyes
+      ctx.lineWidth = 14;
+      ctx.lineCap = 'round';
+      ctx.strokeStyle = '#4c0519';
+      ctx.beginPath();
+      ctx.moveTo(165, 148);
+      ctx.lineTo(232, 178);
+      ctx.moveTo(347, 148);
+      ctx.lineTo(280, 178);
+      ctx.stroke();
+
+      // Corner red warning badge with bold white X
+      const bx = 398;
+      const by = 398;
+      ctx.beginPath();
+      ctx.arc(bx, by, 64, 0, Math.PI * 2);
+      ctx.fillStyle = '#e11d48';
+      ctx.fill();
+      ctx.lineWidth = 8;
+      ctx.setLineDash([]);
+      ctx.strokeStyle = '#ffffff';
+      ctx.stroke();
+
+      ctx.beginPath();
+      ctx.moveTo(bx - 26, by - 26);
+      ctx.lineTo(bx + 26, by + 26);
+      ctx.moveTo(bx + 26, by - 26);
+      ctx.lineTo(bx - 26, by + 26);
+      ctx.lineWidth = 13;
+      ctx.strokeStyle = '#ffffff';
+      ctx.stroke();
+      ctx.restore();
     }
 
     tex.needsUpdate = true;
@@ -314,15 +451,94 @@ function createCritterTargetTexture(renderer, critterId) {
 }
 
 /**
+ * Builds a 3D Carnival Candy-Cloud Obstacle Shield for Stage 2 & combined stages ("第二关有遮挡物").
+ */
+function build3DObstacleShieldMesh(radius = 0.45) {
+  const group = new THREE.Group();
+
+  // Main glossy candy-striped bumper disc
+  const shieldGeo = new THREE.CylinderGeometry(radius, radius * 1.04, 0.16, 36);
+  shieldGeo.rotateX(Math.PI / 2);
+  const shieldMat = new THREE.MeshStandardMaterial({
+    color: 0x38bdf8,
+    roughness: 0.28,
+    metalness: 0.25,
+  });
+  const shieldMesh = new THREE.Mesh(shieldGeo, shieldMat);
+  shieldMesh.castShadow = true;
+  group.add(shieldMesh);
+
+  // Fluffy 3D cloud puffs around the perimeter
+  const puffMat = new THREE.MeshStandardMaterial({
+    color: 0xffffff,
+    roughness: 0.35,
+    metalness: 0.08,
+  });
+  const puffCount = 6;
+  for (let i = 0; i < puffCount; i++) {
+    const a = (i / puffCount) * Math.PI * 2;
+    const puff = new THREE.Mesh(new THREE.SphereGeometry(radius * 0.42, 16, 14), puffMat);
+    puff.position.set(Math.cos(a) * (radius * 0.72), Math.sin(a) * (radius * 0.72), 0.02);
+    puff.scale.z = 0.55;
+    group.add(puff);
+  }
+
+  // Gold & coral bumper ring on front
+  const rimMesh = new THREE.Mesh(
+    new THREE.TorusGeometry(radius * 0.78, 0.052, 14, 36),
+    new THREE.MeshStandardMaterial({
+      color: 0xf59e0b,
+      roughness: 0.25,
+      metalness: 0.65,
+    })
+  );
+  rimMesh.position.z = 0.09;
+  group.add(rimMesh);
+
+  // Bold 3D coral X / Shield cross emblem on the front so kids know not to hit it
+  const barGeo = new THREE.BoxGeometry(radius * 1.05, 0.13, 0.06);
+  const barMat = new THREE.MeshStandardMaterial({
+    color: 0xe11d48,
+    roughness: 0.3,
+    metalness: 0.2,
+  });
+  const bar1 = new THREE.Mesh(barGeo, barMat);
+  bar1.position.z = 0.11;
+  bar1.rotation.z = Math.PI / 4;
+  group.add(bar1);
+
+  const bar2 = new THREE.Mesh(barGeo, barMat);
+  bar2.position.z = 0.11;
+  bar2.rotation.z = -Math.PI / 4;
+  group.add(bar2);
+
+  return group;
+}
+
+/**
+ * Builds a 3D Red Cross Hazard Sign above Bad Baba Chops
+ */
+function build3DHazardCrossMesh(size = 0.22) {
+  const group = new THREE.Group();
+  const geo = new THREE.BoxGeometry(size * 1.5, size * 0.38, 0.06);
+  const mat = new THREE.MeshBasicMaterial({ color: 0xe11d48, toneMapped: false });
+  const b1 = new THREE.Mesh(geo, mat);
+  b1.rotation.z = Math.PI / 4;
+  const b2 = new THREE.Mesh(geo, mat);
+  b2.rotation.z = -Math.PI / 4;
+  group.add(b1, b2);
+  return group;
+}
+
+/**
  * Builds a sculpted 3D High-Resolution Dart mesh (normal, triple, or super)
  */
 function build3DDartMesh(dartType = 'normal', colorHex = 0xff4757) {
   const root = new THREE.Group();
   const isSuper = dartType === 'super';
-  const scale = isSuper ? 1.48 : 1.08;
+  const scale = isSuper ? 1.42 : 1.04;
   root.scale.setScalar(scale);
 
-  // Dart aligns along -Z (tip at z = -0.58, fins at z = +0.36)
   const tipMat = new THREE.MeshStandardMaterial({
     color: isSuper ? 0xfbbf24 : 0xe2e8f0,
     roughness: 0.22,
@@ -334,7 +550,6 @@ function build3DDartMesh(dartType = 'normal', colorHex = 0xff4757) {
   tipMesh.position.z = -0.45;
   root.add(tipMesh);
 
-  // Suction/plush collar ring right behind tip
   const collarMat = new THREE.MeshStandardMaterial({
     color: 0xfbbf24,
     roughness: 0.32,
@@ -344,7 +559,6 @@ function build3DDartMesh(dartType = 'normal', colorHex = 0xff4757) {
   collarMesh.position.z = -0.31;
   root.add(collarMesh);
 
-  // Sleek barrel body
   const barrelMat = new THREE.MeshStandardMaterial({
     color: isSuper ? 0xa855f7 : colorHex,
     roughness: 0.35,
@@ -356,7 +570,6 @@ function build3DDartMesh(dartType = 'normal', colorHex = 0xff4757) {
   barrelMesh.position.z = -0.02;
   root.add(barrelMesh);
 
-  // White candy stripe band around barrel
   const bandMat = new THREE.MeshBasicMaterial({ color: 0xffffff, toneMapped: false });
   const bandGeo = new THREE.CylinderGeometry(0.081, 0.075, 0.14, 24);
   bandGeo.rotateX(Math.PI / 2);
@@ -364,7 +577,6 @@ function build3DDartMesh(dartType = 'normal', colorHex = 0xff4757) {
   bandMesh.position.z = -0.08;
   root.add(bandMesh);
 
-  // 4 tail fins
   const finMat = new THREE.MeshStandardMaterial({
     color: isSuper ? 0xfacc15 : colorHex,
     emissive: isSuper ? 0xca8a04 : 0x000000,
@@ -381,7 +593,6 @@ function build3DDartMesh(dartType = 'normal', colorHex = 0xff4757) {
     root.add(fin);
   }
 
-  // Glowing end cap
   const capMat = new THREE.MeshBasicMaterial({
     color: isSuper ? 0xfef08a : 0xffffff,
     toneMapped: false,
@@ -440,7 +651,6 @@ export function createDartScene(canvas, callbacks = {}) {
   const scene = new THREE.Scene();
   scene.background = createSkyBackdropTexture();
 
-  // Studio softbox PMREM environment so metallic brass rims & glossy plush eyes gleam
   const pmremGen = new THREE.PMREMGenerator(renderer);
   const envScene = new THREE.Scene();
   envScene.background = new THREE.Color(0xfff8eb);
@@ -453,7 +663,6 @@ export function createDartScene(canvas, callbacks = {}) {
   envScene.add(sb1);
   scene.environment = pmremGen.fromScene(envScene, 0.04).texture;
 
-  // Bright, sunny, physically calibrated Three.js r161 lighting
   const hemiLight = new THREE.HemisphereLight(0xfffdf9, 0xf3d5b5, 1.25);
   hemiLight.position.set(0, 8, 2);
   scene.add(hemiLight);
@@ -480,7 +689,7 @@ export function createDartScene(canvas, callbacks = {}) {
   const baseCamPos = new THREE.Vector3(0, 1.72, 6.55);
   const baseLookAt = new THREE.Vector3(0, 1.78, -1.80);
 
-  // Carnival Wooden Stage Floor & Archway
+  // Carnival Wooden Stage Floor & Pillars
   const stageGroup = new THREE.Group();
   scene.add(stageGroup);
 
@@ -496,20 +705,28 @@ export function createDartScene(canvas, callbacks = {}) {
   floorMesh.receiveShadow = true;
   stageGroup.add(floorMesh);
 
-  // Wooden Carnival Stand Pillars supporting the Giant 3D Dartboard Wheel
   const pillarMat = new THREE.MeshStandardMaterial({
     color: 0xb45309,
     roughness: 0.58,
     metalness: 0.15,
   });
-  [-2.65, 2.65].forEach((px) => {
-    const pillar = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.24, 4.2, 20), pillarMat);
-    pillar.position.set(px, 0.65, -2.55);
+  [-3.25, 3.25].forEach((px) => {
+    const pillar = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.24, 4.4, 20), pillarMat);
+    pillar.position.set(px, 0.70, -2.55);
     pillar.castShadow = true;
     stageGroup.add(pillar);
   });
 
-  // 2 Full 3D Articulated Smiling Critter Cheerleaders on Left & Right Stage Pedestals!
+  // Overhead Carnival Glide Rail (visual track for Stage 3+ moving dartboard)
+  const railBar = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.08, 0.08, 6.7, 16),
+    new THREE.MeshStandardMaterial({ color: 0xf59e0b, roughness: 0.3, metalness: 0.65 })
+  );
+  railBar.rotation.z = Math.PI / 2;
+  railBar.position.set(0, 2.82, -2.55);
+  stageGroup.add(railBar);
+
+  // 2 Full 3D Articulated Smiling Critter Cheerleaders on Left & Right Stage Pedestals
   const pedestalMat = new THREE.MeshStandardMaterial({
     color: 0xfbbf24,
     roughness: 0.38,
@@ -550,21 +767,27 @@ export function createDartScene(canvas, callbacks = {}) {
     }
   }
 
-  addStageCheerleader(buildCatNapPlushModel, -3.55, 0.36, 0x8a5cf5);
-  addStageCheerleader(buildDogDayPlushModel, 3.55, -0.36, 0xf97316);
+  addStageCheerleader(buildCatNapPlushModel, -3.65, 0.36, 0x8a5cf5);
+  addStageCheerleader(buildDogDayPlushModel, 3.65, -0.36, 0xf97316);
 
   // ============================================================================
-  // GIANT 3D CARNIVAL DARTBOARD WHEEL (Center Stage, >= 60% of viewport)
+  // GIANT 3D CARNIVAL DARTBOARD WHEEL
   // ============================================================================
-  const WHEEL_CENTER = new THREE.Vector3(0, 1.84, -2.10);
+  const BASE_WHEEL_CENTER = new THREE.Vector3(0, 1.84, -2.10);
   const BOARD_RADIUS = 2.52;
 
   const wheelMountGroup = new THREE.Group();
-  wheelMountGroup.position.copy(WHEEL_CENTER);
+  wheelMountGroup.position.copy(BASE_WHEEL_CENTER);
   scene.add(wheelMountGroup);
 
   const targetWheelGroup = new THREE.Group();
   wheelMountGroup.add(targetWheelGroup);
+
+  // 3D Orbiting Obstacle Shields Group (mounted in front of wheelMountGroup at z = +0.52)
+  const OBSTACLE_LOCAL_Z = 0.52;
+  const obstaclesGroup = new THREE.Group();
+  obstaclesGroup.position.z = OBSTACLE_LOCAL_Z;
+  wheelMountGroup.add(obstaclesGroup);
 
   // 3D Dartboard backing cylinder + face texture
   const boardBackMat = new THREE.MeshStandardMaterial({
@@ -625,7 +848,7 @@ export function createDartScene(canvas, callbacks = {}) {
     marqueeBulbs.push(bulb);
   }
 
-  // Group forCritter Target Pads + Group for Pinned 3D Darts
+  // Group for Critter Target Pads + Group for Pinned 3D Darts
   const critterPadsRoot = new THREE.Group();
   targetWheelGroup.add(critterPadsRoot);
 
@@ -633,22 +856,48 @@ export function createDartScene(canvas, callbacks = {}) {
   targetWheelGroup.add(pinnedDartsGroup);
 
   const textureCache = new Map();
-  function getCritterTex(critterId) {
-    if (!textureCache.has(critterId)) {
-      textureCache.set(critterId, createCritterTargetTexture(renderer, critterId));
+  function getCritterTex(critterId, isBad = false) {
+    const key = `${critterId}_${isBad ? 'bad' : 'good'}`;
+    if (!textureCache.has(key)) {
+      textureCache.set(key, createCritterTargetTexture(renderer, critterId, isBad));
     }
-    return textureCache.get(critterId);
+    return textureCache.get(key);
   }
-  // Preload all 9 Smiling Critters target textures at scene creation so Stage 2 & Stage 3 render on frame 0
-  Object.keys(CRITTER_META).forEach((cid) => getCritterTex(cid));
+  Object.keys(CRITTER_META).forEach((cid) => getCritterTex(cid, false));
+  getCritterTex('baba', true);
 
   let critterTargets = [];
+  let obstacleShields = [];
   let currentStage = 1;
   let wheelAngle = 0;
+  let obstacleAngle = 0;
+  let sceneElapsed = 0;
 
-  function buildCritterTargetPad(critterId, isCenter, index, totalOuter, outerRadius) {
+  /**
+   * Computes the exact world center of the dartboard at any time t (supports Stage 3/5/7 slow gliding!)
+   */
+  function getBoardCenterAtTime(t) {
+    const layout = STAGE_LAYOUTS[currentStage] || STAGE_LAYOUTS[1];
+    if (!layout.moveAmpX && !layout.moveAmpY) {
+      return BASE_WHEEL_CENTER.clone();
+    }
+    const ox = Math.sin(t * layout.moveSpeed) * (layout.moveAmpX || 0);
+    const oy = Math.sin(t * layout.moveSpeed * 2.0) * (layout.moveAmpY || 0);
+    return new THREE.Vector3(
+      BASE_WHEEL_CENTER.x + ox,
+      BASE_WHEEL_CENTER.y + oy,
+      BASE_WHEEL_CENTER.z
+    );
+  }
+
+  /**
+   * Smaller Critter Medallions occupying ~50% of the board disk area ("critter小一点，占盘子50%面积就够了"):
+   * - Center pad radius = 0.45, Outer pad radius = 0.39 (so 0.45 + 2*0.39 = 1.23 out of BOARD_RADIUS 2.52 -> ~49% radial span,
+   *   and wide colorful dartboard sectors are exposed between all Critters so missed throws hit the board wood!)
+   */
+  function buildCritterTargetPad(critterId, isCenter, index, totalOuter, outerRadius, isBad = false) {
     const meta = CRITTER_META[critterId] || CRITTER_META.catnap;
-    const padRadius = isCenter ? 0.68 : totalOuter >= 8 ? 0.49 : 0.56;
+    const padRadius = isCenter ? 0.45 : 0.39;
     const baseAngle = isCenter ? 0 : (index / totalOuter) * Math.PI * 2;
     const baseDist = isCenter ? 0 : outerRadius;
 
@@ -661,10 +910,10 @@ export function createDartScene(canvas, callbacks = {}) {
     critterPadsRoot.add(padGroup);
 
     // 1. 3D Cushioned Target Base Cylinder
-    const cushionGeo = new THREE.CylinderGeometry(padRadius, padRadius * 1.05, 0.16, 40);
+    const cushionGeo = new THREE.CylinderGeometry(padRadius, padRadius * 1.05, 0.15, 36);
     cushionGeo.rotateX(Math.PI / 2);
     const cushionMat = new THREE.MeshStandardMaterial({
-      color: meta.colorHex,
+      color: isBad ? 0xbe123c : meta.colorHex,
       roughness: 0.42,
       metalness: 0.15,
     });
@@ -672,32 +921,33 @@ export function createDartScene(canvas, callbacks = {}) {
     cushionMesh.position.z = 0.04;
     padGroup.add(cushionMesh);
 
-    // 2. 3D Golden / Colored Bevel Rim around the Critter Pad
+    // 2. 3D Bevel Rim around the Critter Pad (Crimson hazard rim for Bad Baba Chops)
     const padRimMat = new THREE.MeshStandardMaterial({
-      color: isCenter ? 0xfbbf24 : meta.rimHex,
+      color: isBad ? 0xf43f5e : isCenter ? 0xfbbf24 : meta.rimHex,
+      emissive: isBad ? 0x881337 : 0x000000,
+      emissiveIntensity: isBad ? 0.45 : 0.0,
       roughness: 0.25,
       metalness: 0.68,
     });
     const padRimMesh = new THREE.Mesh(
-      new THREE.TorusGeometry(padRadius, 0.055, 16, 44),
+      new THREE.TorusGeometry(padRadius, 0.048, 16, 40),
       padRimMat
     );
     padRimMesh.position.z = 0.11;
     padGroup.add(padRimMesh);
 
-    // 3. Counter-rotating Upright Critter Plush Relief Group (stays upright like a Ferris wheel gondola!)
+    // 3. Counter-rotating Upright Critter Plush Relief Group
     const uprightGroup = new THREE.Group();
     uprightGroup.position.z = 0.14;
     padGroup.add(uprightGroup);
 
-    // High-resolution RGBA Smiling Critter Plush Disc (double-layered for 3D relief pop)
     const portraitMat = new THREE.MeshBasicMaterial({
-      map: getCritterTex(critterId),
+      map: getCritterTex(critterId, isBad),
       transparent: true,
       toneMapped: false,
       depthWrite: false,
     });
-    const portraitSize = padRadius * 2.08;
+    const portraitSize = padRadius * 1.84;
     const portraitMesh = new THREE.Mesh(
       new THREE.PlaneGeometry(portraitSize, portraitSize),
       portraitMat
@@ -705,26 +955,34 @@ export function createDartScene(canvas, callbacks = {}) {
     portraitMesh.position.z = 0.05;
     uprightGroup.add(portraitMesh);
 
-    // 3D Sonic Cute Yell Wave Rings (expand from mouth when hit!)
+    // 3D Hazard Sign above Bad Baba Chops so 5-year-olds immediately recognize "Don't Shoot!"
+    let hazardSign = null;
+    if (isBad) {
+      hazardSign = build3DHazardCrossMesh(0.22);
+      hazardSign.position.set(0, padRadius * 0.96, 0.12);
+      uprightGroup.add(hazardSign);
+    }
+
+    // 3D Sonic Cute Yell Wave Rings
     const yellRings = [];
     for (let rIdx = 0; rIdx < 2; rIdx++) {
       const yRingMat = new THREE.MeshBasicMaterial({
-        color: rIdx === 0 ? 0xfbbf24 : 0xff6b8b,
+        color: isBad ? 0xe11d48 : rIdx === 0 ? 0xfbbf24 : 0xff6b8b,
         transparent: true,
         opacity: 0.0,
         toneMapped: false,
         depthWrite: false,
       });
-      const yRing = new THREE.Mesh(new THREE.RingGeometry(0.18, 0.25, 32), yRingMat);
-      yRing.position.set(0, 0.06, 0.12 + rIdx * 0.02);
+      const yRing = new THREE.Mesh(new THREE.RingGeometry(0.14, 0.20, 32), yRingMat);
+      yRing.position.set(0, 0.05, 0.12 + rIdx * 0.02);
       yRing.visible = false;
       uprightGroup.add(yRing);
       yellRings.push({ mesh: yRing, mat: yRingMat });
     }
 
-    // 3D Golden Star Hit Crown above the Critter
-    const hitStar = buildStarMesh(0.16, 0xfbbf24);
-    hitStar.position.set(0, padRadius * 0.88, 0.10);
+    // 3D Golden Star Hit Crown above Happy Critter
+    const hitStar = buildStarMesh(0.14, 0xfbbf24);
+    hitStar.position.set(0, padRadius * 0.92, 0.10);
     hitStar.visible = false;
     uprightGroup.add(hitStar);
 
@@ -732,6 +990,7 @@ export function createDartScene(canvas, callbacks = {}) {
       critterId,
       meta,
       isCenter,
+      isBad,
       index,
       totalOuter,
       baseAngle,
@@ -741,6 +1000,7 @@ export function createDartScene(canvas, callbacks = {}) {
       uprightGroup,
       portraitMesh,
       padRimMat,
+      hazardSign,
       yellRings,
       hitStar,
       hitCount: 0,
@@ -753,41 +1013,110 @@ export function createDartScene(canvas, callbacks = {}) {
     currentStage = stageNum;
     const layout = STAGE_LAYOUTS[stageNum] || STAGE_LAYOUTS[1];
 
-    // Clear old pads & pinned darts
     while (critterPadsRoot.children.length > 0) {
       critterPadsRoot.remove(critterPadsRoot.children[0]);
     }
     while (pinnedDartsGroup.children.length > 0) {
       pinnedDartsGroup.remove(pinnedDartsGroup.children[0]);
     }
+    while (obstaclesGroup.children.length > 0) {
+      obstaclesGroup.remove(obstaclesGroup.children[0]);
+    }
     critterTargets = [];
+    obstacleShields = [];
+    wheelAngle = 0;
+    obstacleAngle = 0;
+    targetWheelGroup.rotation.z = 0;
+    obstaclesGroup.rotation.z = 0;
+    wheelMountGroup.position.copy( getBoardCenterAtTime(sceneElapsed) );
 
-    // Center Bullseye Critter
+    // Center Bullseye Critter (always friendly)
     critterTargets.push(
-      buildCritterTargetPad(layout.centerCritter, true, 0, layout.outerCritters.length, 0)
+      buildCritterTargetPad(layout.centerCritter, true, 0, layout.outerCritters.length, 0, false)
     );
 
-    // Outer Ring Critters
+    // Outer Ring Critters (some may be Bad Baba Chops in Stage 4, 6, 7)
+    const badSet = new Set(layout.badBabaIndices || []);
     layout.outerCritters.forEach((cid, idx) => {
+      const isBad = cid === 'baba' && badSet.has(idx);
       critterTargets.push(
-        buildCritterTargetPad(cid, false, idx, layout.outerCritters.length, layout.outerRadius)
+        buildCritterTargetPad(cid, false, idx, layout.outerCritters.length, layout.outerRadius, isBad)
       );
     });
+
+    // Build 3D Orbiting Obstacle Shields for Stage 2, 5, 6, 7 ("第二关有遮挡物")
+    const numObstacles = layout.obstacles || 0;
+    const obsRadius = layout.obstacleRadius || 1.48;
+    const shieldHitRadius = 0.44;
+    for (let i = 0; i < numObstacles; i++) {
+      const baseAngle = (i / numObstacles) * Math.PI * 2 + Math.PI * 0.25;
+      const mesh = build3DObstacleShieldMesh(shieldHitRadius);
+      mesh.position.set(
+        Math.cos(baseAngle) * obsRadius,
+        Math.sin(baseAngle) * obsRadius,
+        0
+      );
+      obstaclesGroup.add(mesh);
+      obstacleShields.push({
+        index: i,
+        baseAngle,
+        orbitRadius: obsRadius,
+        hitRadius: shieldHitRadius,
+        mesh,
+        bounceTimer: 0,
+      });
+    }
   }
 
   rebuildStageTargets(1);
 
   // ============================================================================
-  // 3D FOREGROUND DART LAUNCHER, GLOWING CROSSHAIR & PARABOLIC TRAJECTORY ARC
+  // TRUE 3D PARABOLIC BALLISTIC CURVE & LEAD-PREDICTION ENGINE
+  // ("射飞镖要有曲线预判的引擎，不能点哪儿就是哪儿")
   // ============================================================================
-  const LAUNCH_ORIGIN = new THREE.Vector3(0, -0.32, 3.65);
-  const TARGET_PLANE_Z = WHEEL_CENTER.z + 0.22; // -1.88
+  const LAUNCH_ORIGIN = new THREE.Vector3(0, -0.36, 3.65);
+  const TARGET_PLANE_Z = BASE_WHEEL_CENTER.z + 0.22; // -1.88
+  const FLIGHT_DURATION = 0.44; // 440ms flight time so board rotation & movement require lead prediction!
+  const GRAVITY_DROP_Y = 0.52;  // Upward lob + gravity drop so impact is 0.52 units below raw straight sightline!
+  const CURVE_WIND_X = 0.14;    // Subtle lateral spin curve drift
+
+  /**
+   * Converts the player's pointer sightline (sightPos on target plane) into the actual
+   * parabolic ballistic impact point after gravity drop and spin curve drift.
+   * Because of GRAVITY_DROP_Y (0.52) and CURVE_WIND_X (0.14), clicking directly on a
+   * spot will NOT land on that spot ("不能点哪儿就是哪儿") — the dart arcs up and curves down!
+   */
+  function computeBallisticImpactFromSight(sightPos) {
+    const impact = sightPos.clone();
+    impact.x = sightPos.x + CURVE_WIND_X + sightPos.x * 0.06;
+    impact.y = sightPos.y - GRAVITY_DROP_Y;
+    impact.z = TARGET_PLANE_Z;
+    return impact;
+  }
+
+  /**
+   * Inverse of computeBallisticImpactFromSight: given a desired landing impact point,
+   * returns the sightPos where the player/launcher must aim.
+   */
+  function computeSightFromDesiredImpact(desiredImpact) {
+    const sight = desiredImpact.clone();
+    sight.x = (desiredImpact.x - CURVE_WIND_X) / 1.06;
+    sight.y = desiredImpact.y + GRAVITY_DROP_Y;
+    sight.z = TARGET_PLANE_Z;
+    return sight;
+  }
+
+  function sampleParabolicArc(start, end, u, arcLift = 0.78, sideCurve = 0.16) {
+    const x = start.x + (end.x - start.x) * u + Math.sin(u * Math.PI) * sideCurve;
+    const y = start.y + (end.y - start.y) * u + Math.sin(u * Math.PI) * arcLift;
+    const z = start.z + (end.z - start.z) * u;
+    return new THREE.Vector3(x, y, z);
+  }
 
   const launcherGroup = new THREE.Group();
   launcherGroup.position.copy(LAUNCH_ORIGIN);
   scene.add(launcherGroup);
 
-  // Golden Toy Launcher Stand
   const launcherBase = new THREE.Mesh(
     new THREE.CylinderGeometry(0.28, 0.36, 0.24, 24),
     new THREE.MeshStandardMaterial({ color: 0xf59e0b, roughness: 0.35, metalness: 0.45 })
@@ -821,84 +1150,173 @@ export function createDartScene(canvas, callbacks = {}) {
   }
   refreshPreviewDart('normal');
 
-  // 3D Glowing Crosshair Reticle on the Target Plane
-  const aimWorldPos = new THREE.Vector3(0, WHEEL_CENTER.y, TARGET_PLANE_Z);
+  // Player's Pointer Sight Position vs Parabolic Landing Impact Position
+  const sightWorldPos = new THREE.Vector3(-0.14, BASE_WHEEL_CENTER.y + GRAVITY_DROP_Y, TARGET_PLANE_Z);
+  const aimWorldPos = computeBallisticImpactFromSight(sightWorldPos);
   let manualAimActive = false;
   let manualAimHoldTimer = 0;
 
+  // 1. Upper Sight Crosshair (shows where the pointer/hand is aiming before gravity drop)
+  const sightMarkerGroup = new THREE.Group();
+  sightMarkerGroup.position.copy(sightWorldPos);
+  scene.add(sightMarkerGroup);
+
+  const sightRingMat = new THREE.MeshBasicMaterial({
+    color: 0x38bdf8,
+    side: THREE.DoubleSide,
+    transparent: true,
+    opacity: 0.85,
+    toneMapped: false,
+    depthTest: false,
+  });
+  const sightRing = new THREE.Mesh(new THREE.RingGeometry(0.11, 0.16, 24), sightRingMat);
+  sightRing.renderOrder = 19;
+  sightMarkerGroup.add(sightRing);
+
+  // 2. Parabolic Impact Landing Reticle on the Target Plane (color-coded by 0.44s lead prediction!)
   const reticleGroup = new THREE.Group();
   reticleGroup.position.copy(aimWorldPos);
   scene.add(reticleGroup);
 
-  const retOuter = new THREE.Mesh(
-    new THREE.RingGeometry(0.32, 0.40, 36),
-    new THREE.MeshBasicMaterial({
-      color: 0xfef08a,
-      side: THREE.DoubleSide,
-      toneMapped: false,
-      depthTest: false,
-    })
-  );
+  const retOuterMat = new THREE.MeshBasicMaterial({
+    color: 0xfef08a,
+    side: THREE.DoubleSide,
+    toneMapped: false,
+    depthTest: false,
+  });
+  const retOuter = new THREE.Mesh(new THREE.RingGeometry(0.28, 0.36, 36), retOuterMat);
   retOuter.renderOrder = 20;
   reticleGroup.add(retOuter);
 
-  const retInner = new THREE.Mesh(
-    new THREE.RingGeometry(0.06, 0.12, 24),
-    new THREE.MeshBasicMaterial({
-      color: 0xff4757,
-      side: THREE.DoubleSide,
-      toneMapped: false,
-      depthTest: false,
-    })
-  );
+  const retInnerMat = new THREE.MeshBasicMaterial({
+    color: 0xff4757,
+    side: THREE.DoubleSide,
+    toneMapped: false,
+    depthTest: false,
+  });
+  const retInner = new THREE.Mesh(new THREE.RingGeometry(0.05, 0.11, 24), retInnerMat);
   retInner.renderOrder = 21;
   reticleGroup.add(retInner);
 
-  // 14 Glowing 3D Trajectory Arc Pearls from Launcher to Reticle
+  // 3. 16 Glowing 3D Parabolic Trajectory Arc Pearls from Launcher to Landing Reticle
   const arcDots = [];
-  const arcDotGeo = new THREE.SphereGeometry(0.048, 10, 10);
-  for (let i = 1; i <= 14; i++) {
+  const arcDotGeo = new THREE.SphereGeometry(0.052, 10, 10);
+  for (let i = 1; i <= 16; i++) {
     const dotMat = new THREE.MeshBasicMaterial({
       color: i % 2 === 0 ? 0xfef08a : 0xffffff,
       transparent: true,
-      opacity: 0.78,
+      opacity: 0.86,
       toneMapped: false,
     });
     const dot = new THREE.Mesh(arcDotGeo, dotMat);
     scene.add(dot);
-    arcDots.push({ mesh: dot, u: i / 15 });
+    arcDots.push({ mesh: dot, mat: dotMat, u: i / 17 });
   }
 
-  function sampleParabolicArc(start, end, u, arcLift = 0.68) {
-    const x = start.x + (end.x - start.x) * u;
-    const y = start.y + (end.y - start.y) * u + Math.sin(u * Math.PI) * arcLift;
-    const z = start.z + (end.z - start.z) * u;
-    return new THREE.Vector3(x, y, z);
+  /**
+   * Predicts what a dart landing at `impactPos` after `FLIGHT_DURATION` (0.44s) will hit!
+   * Accounts for future board glide, future wheel rotation, and future 3D obstacle positions.
+   */
+  function predictFutureOutcomeAtImpact(impactPos, nowElapsed) {
+    const layout = STAGE_LAYOUTS[currentStage] || STAGE_LAYOUTS[1];
+
+    // 1. Check if the parabolic arc will hit a 3D Obstacle Shield at u = 0.85
+    if (obstacleShields.length > 0) {
+      const obsTime = nowElapsed + FLIGHT_DURATION * 0.85;
+      const obsBoardCenter = getBoardCenterAtTime(obsTime);
+      const futureObsAngle = obstacleAngle + layout.obstacleSpeed * (FLIGHT_DURATION * 0.85);
+      const dartAtObsPlane = sampleParabolicArc(LAUNCH_ORIGIN, impactPos, 0.85);
+      for (const shield of obstacleShields) {
+        const a = shield.baseAngle + futureObsAngle;
+        const sx = obsBoardCenter.x + Math.cos(a) * shield.orbitRadius;
+        const sy = obsBoardCenter.y + Math.sin(a) * shield.orbitRadius;
+        if (Math.hypot(dartAtObsPlane.x - sx, dartAtObsPlane.y - sy) <= shield.hitRadius * 0.95) {
+          return 'obstacle';
+        }
+      }
+    }
+
+    // 2. Check where the board & Critter pads will be at t = nowElapsed + FLIGHT_DURATION
+    const impactTime = nowElapsed + FLIGHT_DURATION;
+    const futureBoardCenter = getBoardCenterAtTime(impactTime);
+    const futureWheelAngle = wheelAngle + layout.wheelSpeed * FLIGHT_DURATION;
+    const hitRadiusBonus = currentDartType === 'super' ? 0.85 : 0.08;
+
+    let closestPad = null;
+    let closestDist = Infinity;
+    for (const pad of critterTargets) {
+      let px = futureBoardCenter.x;
+      let py = futureBoardCenter.y;
+      if (!pad.isCenter) {
+        const r =
+          pad.baseDist +
+          (layout.bobAmplitude > 0
+            ? Math.sin(impactTime * 2.8 + pad.index * 1.05) * layout.bobAmplitude
+            : 0);
+        const totalAngle = pad.baseAngle + futureWheelAngle;
+        px += Math.cos(totalAngle) * r;
+        py += Math.sin(totalAngle) * r;
+      }
+      const d = Math.hypot(impactPos.x - px, impactPos.y - py);
+      if (d <= pad.padRadius + hitRadiusBonus && d < closestDist) {
+        closestDist = d;
+        closestPad = pad;
+      }
+    }
+
+    if (closestPad) {
+      return closestPad.isBad ? 'bad_critter' : 'good_critter';
+    }
+    return 'miss';
   }
 
   function updateAimVisuals(t = 0) {
+    sightMarkerGroup.position.copy(sightWorldPos);
     reticleGroup.position.copy(aimWorldPos);
-    const pulse = 1.0 + Math.sin(t * 7.0) * 0.08;
-    const typeScale = currentDartType === 'super' ? 1.45 : currentDartType === 'triple' ? 1.2 : 1.0;
+
+    // Evaluate 0.44s lead prediction so the landing ring gives instant visual feedback to a 5-year-old
+    const outcome = predictFutureOutcomeAtImpact(aimWorldPos, t);
+    if (outcome === 'good_critter') {
+      retOuterMat.color.setHex(0x4ade80); // Bright emerald green = Lead is locked onto a Happy Critter!
+      retInnerMat.color.setHex(0xfef08a);
+    } else if (outcome === 'obstacle' || outcome === 'bad_critter') {
+      retOuterMat.color.setHex(0xf43f5e); // Warning crimson = Will hit Obstacle or Bad Baba Chops!
+      retInnerMat.color.setHex(0x881337);
+    } else {
+      retOuterMat.color.setHex(0xfef08a); // Gold/coral = Empty board wood (Miss -15)
+      retInnerMat.color.setHex(0xff4757);
+    }
+
+    const pulse = 1.0 + Math.sin(t * 7.5) * (outcome === 'good_critter' ? 0.14 : 0.06);
+    const typeScale = currentDartType === 'super' ? 1.42 : currentDartType === 'triple' ? 1.18 : 1.0;
     reticleGroup.scale.setScalar(pulse * typeScale);
     retOuter.rotation.z = t * 1.8;
 
-    for (const d of arcDots) {
-      const p = sampleParabolicArc(LAUNCH_ORIGIN, aimWorldPos, d.u, 0.65);
+    for (let i = 0; i < arcDots.length; i++) {
+      const d = arcDots[i];
+      const p = sampleParabolicArc(LAUNCH_ORIGIN, aimWorldPos, d.u);
       d.mesh.position.copy(p);
-      const s = 0.75 + 0.35 * Math.sin(t * 8.0 - d.u * 6.0);
+      const s = 0.78 + 0.35 * Math.sin(t * 9.0 - d.u * 6.5);
       d.mesh.scale.setScalar(s);
+      if (outcome === 'good_critter') {
+        d.mat.color.setHex(i % 2 === 0 ? 0x4ade80 : 0xfef08a);
+      } else if (outcome === 'obstacle' || outcome === 'bad_critter') {
+        d.mat.color.setHex(i % 2 === 0 ? 0xfb7185 : 0xfef08a);
+      } else {
+        d.mat.color.setHex(i % 2 === 0 ? 0xfef08a : 0xffffff);
+      }
     }
 
-    // Orient launcher preview dart along initial tangent of parabolic arc
-    const pNear = sampleParabolicArc(LAUNCH_ORIGIN, aimWorldPos, 0.12, 0.65);
+    // Orient launcher preview dart along initial upward tangent of parabolic arc
+    const pNear = sampleParabolicArc(LAUNCH_ORIGIN, aimWorldPos, 0.10);
     launcherGroup.lookAt(pNear);
   }
 
   // ============================================================================
-  // FLYING 3D DARTS & 3D STAR/HEART BURST PARTICLES
+  // FLYING 3D DARTS, DEFLECTED DARTS & 3D STAR/HEART BURST PARTICLES
   // ============================================================================
   const flyingDarts = [];
+  const deflectedDarts = [];
   const pinnedDarts = [];
   const burstParticles = [];
   const starBurstGeo = new THREE.OctahedronGeometry(0.11, 0);
@@ -931,38 +1349,49 @@ export function createDartScene(canvas, callbacks = {}) {
   function triggerCritterReaction(pad, hitWorldPos) {
     pad.hitCount += 1;
     pad.yellTimer = pad.yellDuration;
-    pad.hitStar.visible = true;
+    if (!pad.isBad) {
+      pad.hitStar.visible = true;
+    }
     for (const yr of pad.yellRings) {
       yr.mesh.visible = true;
       yr.mat.opacity = 0.95;
       yr.mesh.scale.setScalar(0.5);
     }
-    // Also trigger the 3D Stage Cheerleader Critters!
-    for (const ch of stageCheerCritters) {
-      ch.cheerTimer = 0.95;
+    if (!pad.isBad) {
+      for (const ch of stageCheerCritters) {
+        ch.cheerTimer = 0.95;
+      }
     }
-    trauma = Math.min(1.0, trauma + 0.45);
-    spawnHitBurst(hitWorldPos, pad.meta.colorHex, 18);
+    trauma = Math.min(1.0, trauma + 0.42);
+    spawnHitBurst(hitWorldPos, pad.isBad ? 0xe11d48 : pad.meta.colorHex, 18);
   }
 
   function resolveDartImpact(flight) {
     const hitWorld = flight.endPos.clone();
     scene.remove(flight.mesh);
 
-    // Attach a pinned 3D dart onto targetWheelGroup so it spins with the wheel!
-    const localHit = targetWheelGroup.worldToLocal(hitWorld.clone());
-    const pinnedMesh = build3DDartMesh(flight.dartType, flight.colorHex);
-    pinnedMesh.position.copy(localHit);
-    pinnedMesh.position.z = 0.22;
-    pinnedDartsGroup.add(pinnedMesh);
-    pinnedDarts.push({
-      mesh: pinnedMesh,
-      wobbleTimer: 0.65,
-    });
+    const currentBoardCenter = wheelMountGroup.position;
+    const distFromBoardCenter = Math.hypot(
+      hitWorld.x - currentBoardCenter.x,
+      hitWorld.y - currentBoardCenter.y
+    );
 
-    // Check which Smiling Critter target pad(s) were hit!
+    // Pin the 3D dart onto targetWheelGroup if it landed on the dartboard disk
+    if (distFromBoardCenter <= BOARD_RADIUS * 1.04) {
+      const localHit = targetWheelGroup.worldToLocal(hitWorld.clone());
+      const pinnedMesh = build3DDartMesh(flight.dartType, flight.colorHex);
+      pinnedMesh.position.copy(localHit);
+      pinnedMesh.position.z = 0.22;
+      pinnedDartsGroup.add(pinnedMesh);
+      pinnedDarts.push({
+        mesh: pinnedMesh,
+        wobbleTimer: 0.65,
+      });
+    }
+
+    // Check which Smiling Critter target pad(s) are at hitWorld AT THIS IMPACT INSTANT
     const hitCritters = [];
-    const hitRadiusBonus = flight.dartType === 'super' ? 1.55 : 0.26;
+    const hitRadiusBonus = flight.dartType === 'super' ? 0.85 : 0.08;
 
     for (const pad of critterTargets) {
       const padWorld = new THREE.Vector3();
@@ -975,17 +1404,37 @@ export function createDartScene(canvas, callbacks = {}) {
       }
     }
 
-    // Sort by closest hit first
     hitCritters.sort((a, b) => a.dist - b.dist);
 
     if (hitCritters.length > 0) {
-      // Normal/triple dart triggers the closest Critter hit; Super dart triggers up to 3 nearby Critters!
-      const maxTargets = flight.dartType === 'super' ? Math.min(3, hitCritters.length) : 1;
-      const chosen = hitCritters.slice(0, maxTargets);
+      // If Super Star Bomb hits multiple targets, filter out Bad Baba Chops from AoE splash unless she was the primary closest target
+      let chosen = [];
+      if (flight.dartType === 'super') {
+        const primary = hitCritters[0];
+        if (primary.pad.isBad && distFromBoardCenter > 0 && primary.dist <= primary.pad.padRadius) {
+          chosen = [primary];
+        } else {
+          chosen = hitCritters.filter((h) => !h.pad.isBad).slice(0, 3);
+          if (chosen.length === 0) chosen = [primary];
+        }
+      } else {
+        chosen = [hitCritters[0]];
+      }
+
       for (const item of chosen) {
         triggerCritterReaction(item.pad, item.padWorld);
-        const screenPt = worldToScreen(item.padWorld.clone().add(new THREE.Vector3(0, 0.55, 0.2)));
-        if (callbacks.onCritterHit) {
+        const screenPt = worldToScreen(item.padWorld.clone().add(new THREE.Vector3(0, 0.52, 0.2)));
+        if (item.pad.isBad) {
+          if (callbacks.onBadCritterHit) {
+            callbacks.onBadCritterHit({
+              critterId: item.pad.critterId,
+              meta: item.pad.meta,
+              dartType: flight.dartType,
+              screenX: screenPt.x,
+              screenY: screenPt.y,
+            });
+          }
+        } else if (callbacks.onCritterHit) {
           callbacks.onCritterHit({
             critterId: item.pad.critterId,
             meta: item.pad.meta,
@@ -996,18 +1445,36 @@ export function createDartScene(canvas, callbacks = {}) {
           });
         }
       }
+      if (flight.batchTracker) {
+        flight.batchTracker.anyCritterHit = true;
+      }
     } else {
-      // Hit the dartboard between Critters — award board ring points
-      const distFromCenter = Math.hypot(
-        hitWorld.x - WHEEL_CENTER.x,
-        hitWorld.y - WHEEL_CENTER.y
-      );
-      if (distFromCenter <= BOARD_RADIUS * 1.05) {
-        spawnHitBurst(hitWorld, 0x38bdf8, 8);
+      // Missed all Critters (hit empty board wood or outside board rim) -> Miss penalty!
+      // For Triple Dart, only apply a single miss penalty if all 3 darts in the fan missed
+      if (flight.batchTracker) {
+        flight.batchTracker.resolvedCount += 1;
+        if (
+          flight.batchTracker.resolvedCount >= flight.batchTracker.totalCount &&
+          !flight.batchTracker.anyCritterHit &&
+          !flight.batchTracker.penaltyApplied
+        ) {
+          flight.batchTracker.penaltyApplied = true;
+          spawnHitBurst(hitWorld, 0xfb7185, 8);
+          const screenPt = worldToScreen(hitWorld);
+          if (callbacks.onBoardMiss) {
+            callbacks.onBoardMiss({
+              distRatio: distFromBoardCenter / BOARD_RADIUS,
+              screenX: screenPt.x,
+              screenY: screenPt.y,
+            });
+          }
+        }
+      } else {
+        spawnHitBurst(hitWorld, 0xfb7185, 8);
         const screenPt = worldToScreen(hitWorld);
-        if (callbacks.onBoardHit) {
-          callbacks.onBoardHit({
-            distRatio: distFromCenter / BOARD_RADIUS,
+        if (callbacks.onBoardMiss) {
+          callbacks.onBoardMiss({
+            distRatio: distFromBoardCenter / BOARD_RADIUS,
             screenX: screenPt.x,
             screenY: screenPt.y,
           });
@@ -1017,55 +1484,39 @@ export function createDartScene(canvas, callbacks = {}) {
   }
 
   /**
-   * Fires the currently selected dart toward targetWorldPos (or current aimWorldPos).
-   * Compensates for wheel rotation over the 0.24s flight time so tapping directly on a
-   * Smiling Critter reliably lands right on that Critter!
+   * Fires a dart from the player's pointer sightPos (or direct impact override).
+   * Zero auto-homing cheat: the dart follows the exact 3D parabolic curve with GRAVITY_DROP_Y
+   * over FLIGHT_DURATION (0.44s), so players must lead the spinning/gliding targets!
    */
-  function shootDartAt(targetPoint = null, dartType = currentDartType) {
-    const baseAim = (targetPoint || aimWorldPos).clone();
-    baseAim.z = TARGET_PLANE_Z;
-
-    // Clamp within reachable carnival stage area
-    const dx0 = baseAim.x - WHEEL_CENTER.x;
-    const dy0 = baseAim.y - WHEEL_CENTER.y;
-    const r0 = Math.hypot(dx0, dy0);
-    if (r0 > BOARD_RADIUS * 0.96) {
-      const scale = (BOARD_RADIUS * 0.96) / r0;
-      baseAim.x = WHEEL_CENTER.x + dx0 * scale;
-      baseAim.y = WHEEL_CENTER.y + dy0 * scale;
-    }
-
-    // If the player aimed near a Smiling Critter pad, lead the rotating pad over flightDuration
-    const flightDuration = 0.24;
-    const layout = STAGE_LAYOUTS[currentStage] || STAGE_LAYOUTS[1];
-    let bestPad = null;
-    let bestDist = Infinity;
-    for (const pad of critterTargets) {
-      const pw = new THREE.Vector3();
-      pad.padGroup.getWorldPosition(pw);
-      const d = Math.hypot(baseAim.x - pw.x, baseAim.y - pw.y);
-      if (d < pad.padRadius * 1.25 && d < bestDist) {
-        bestDist = d;
-        bestPad = pad;
+  function shootDartAt(sightOrTargetPoint = null, dartType = currentDartType, isDirectImpactPoint = false) {
+    let baseImpact;
+    if (sightOrTargetPoint) {
+      if (isDirectImpactPoint) {
+        baseImpact = sightOrTargetPoint.clone();
+        baseImpact.z = TARGET_PLANE_Z;
+      } else {
+        sightWorldPos.copy(sightOrTargetPoint);
+        sightWorldPos.z = TARGET_PLANE_Z;
+        baseImpact = computeBallisticImpactFromSight(sightWorldPos);
+        aimWorldPos.copy(baseImpact);
       }
-    }
-    if (bestPad && !bestPad.isCenter) {
-      const futureWheelAngle = wheelAngle + layout.wheelSpeed * flightDuration;
-      const totalAngle = bestPad.baseAngle + futureWheelAngle;
-      baseAim.x = WHEEL_CENTER.x + Math.cos(totalAngle) * bestPad.baseDist;
-      baseAim.y = WHEEL_CENTER.y + Math.sin(totalAngle) * bestPad.baseDist;
-    } else if (bestPad && bestPad.isCenter) {
-      baseAim.x = WHEEL_CENTER.x;
-      baseAim.y = WHEEL_CENTER.y;
+    } else {
+      baseImpact = aimWorldPos.clone();
     }
 
-    const offsets = dartType === 'triple' ? [-0.62, 0, 0.62] : [0];
+    const offsets = dartType === 'triple' ? [-0.52, 0, 0.52] : [0];
     const colors = dartType === 'triple' ? [0x38bdf8, 0xff4757, 0x22c55e] : [0xff4757];
+    const batchTracker = {
+      totalCount: offsets.length,
+      resolvedCount: 0,
+      anyCritterHit: false,
+      penaltyApplied: false,
+    };
 
     offsets.forEach((ox, idx) => {
-      const endPos = baseAim.clone();
+      const endPos = baseImpact.clone();
       endPos.x += ox;
-      endPos.y += idx === 1 ? 0.12 : 0;
+      endPos.y += idx === 1 ? 0.06 : 0;
 
       const mesh = build3DDartMesh(dartType === 'super' ? 'super' : 'normal', colors[idx] || 0xff4757);
       mesh.position.copy(LAUNCH_ORIGIN);
@@ -1078,17 +1529,18 @@ export function createDartScene(canvas, callbacks = {}) {
         startPos: LAUNCH_ORIGIN.clone(),
         endPos,
         elapsed: 0,
-        duration: flightDuration,
+        duration: FLIGHT_DURATION,
+        checkedObstacle: false,
+        batchTracker,
       });
     });
 
-    // Recoil kick on preview launcher
     previewDartHolder.position.z = 0.22;
   }
 
   function screenToTargetWorld(clientX, clientY) {
     const rect = canvas.getBoundingClientRect();
-    if (!rect.width || !rect.height) return aimWorldPos.clone();
+    if (!rect.width || !rect.height) return sightWorldPos.clone();
     const ndcX = ((clientX - rect.left) / rect.width) * 2 - 1;
     const ndcY = -((clientY - rect.top) / rect.height) * 2 + 1;
 
@@ -1097,18 +1549,12 @@ export function createDartScene(canvas, callbacks = {}) {
     const plane = new THREE.Plane(new THREE.Vector3(0, 0, 1), -TARGET_PLANE_Z);
     const hit = new THREE.Vector3();
     if (raycaster.ray.intersectPlane(plane, hit)) {
-      const dx = hit.x - WHEEL_CENTER.x;
-      const dy = hit.y - WHEEL_CENTER.y;
-      const r = Math.hypot(dx, dy);
-      const maxR = BOARD_RADIUS * 0.96;
-      if (r > maxR) {
-        hit.x = WHEEL_CENTER.x + (dx / r) * maxR;
-        hit.y = WHEEL_CENTER.y + (dy / r) * maxR;
-      }
+      hit.x = Math.max(-3.6, Math.min(3.6, hit.x));
+      hit.y = Math.max(-0.4, Math.min(4.6, hit.y));
       hit.z = TARGET_PLANE_Z;
       return hit;
     }
-    return aimWorldPos.clone();
+    return sightWorldPos.clone();
   }
 
   function worldToScreen(worldVec) {
@@ -1123,11 +1569,47 @@ export function createDartScene(canvas, callbacks = {}) {
   }
 
   function setAimFromClient(clientX, clientY) {
-    const pt = screenToTargetWorld(clientX, clientY);
-    aimWorldPos.copy(pt);
+    const sightPt = screenToTargetWorld(clientX, clientY);
+    sightWorldPos.copy(sightPt);
+    aimWorldPos.copy(computeBallisticImpactFromSight(sightPt));
     manualAimActive = true;
-    manualAimHoldTimer = 4.0;
-    return pt;
+    manualAimHoldTimer = 4.5;
+    return sightPt;
+  }
+
+  /**
+   * Computes the exact lead-predicted sight position required right now so that a parabolic dart
+   * flying for FLIGHT_DURATION (0.44s) lands squarely on Critter pad `idx` when it arrives there!
+   */
+  function getLeadPredictedSightForPad(idx = 0) {
+    if (!critterTargets.length) return sightWorldPos.clone();
+    // Prefer a non-bad Critter if idx points to a Bad Baba Chops when called by assistive button
+    let pad = critterTargets[((idx % critterTargets.length) + critterTargets.length) % critterTargets.length];
+    if (pad.isBad) {
+      const goodPads = critterTargets.filter((p) => !p.isBad);
+      if (goodPads.length > 0) {
+        pad = goodPads[idx % goodPads.length];
+      }
+    }
+
+    const layout = STAGE_LAYOUTS[currentStage] || STAGE_LAYOUTS[1];
+    const impactTime = sceneElapsed + FLIGHT_DURATION;
+    const futureBoardCenter = getBoardCenterAtTime(impactTime);
+    const futureWheelAngle = wheelAngle + layout.wheelSpeed * FLIGHT_DURATION;
+
+    const futurePadWorld = futureBoardCenter.clone();
+    if (!pad.isCenter) {
+      const r =
+        pad.baseDist +
+        (layout.bobAmplitude > 0
+          ? Math.sin(impactTime * 2.8 + pad.index * 1.05) * layout.bobAmplitude
+          : 0);
+      const totalAngle = pad.baseAngle + futureWheelAngle;
+      futurePadWorld.x += Math.cos(totalAngle) * r;
+      futurePadWorld.y += Math.sin(totalAngle) * r;
+    }
+    futurePadWorld.z = TARGET_PLANE_Z;
+    return computeSightFromDesiredImpact(futurePadWorld);
   }
 
   function resize() {
@@ -1137,7 +1619,6 @@ export function createDartScene(canvas, callbacks = {}) {
     const aspect = w / Math.max(1, h);
     camera.aspect = aspect;
 
-    // Responsive framing so the Giant 3D Dartboard Wheel + Launcher fit 100% on both portrait & landscape
     if (aspect < 0.85) {
       camera.fov = 52;
       baseCamPos.set(0, 1.68, 8.25);
@@ -1158,11 +1639,32 @@ export function createDartScene(canvas, callbacks = {}) {
 
   function step(dt, elapsed, shouldRender = true) {
     const clampedDt = Math.min(0.05, Math.max(0.001, dt));
+    sceneElapsed = elapsed;
     const layout = STAGE_LAYOUTS[currentStage] || STAGE_LAYOUTS[1];
 
-    // 1. Rotate Giant 3D Carnival Dartboard Wheel
+    // 1. Whole-Dartboard Slow Gliding Movement (Stage 3, 5, 7 — "第三关盘子整体缓速移动")
+    const boardCenter = getBoardCenterAtTime(elapsed);
+    wheelMountGroup.position.copy(boardCenter);
+
+    // 2. Rotate Giant 3D Carnival Dartboard Wheel
     wheelAngle += layout.wheelSpeed * clampedDt;
     targetWheelGroup.rotation.z = wheelAngle;
+
+    // 3. Rotate 3D Orbiting Obstacle Shields (Stage 2, 5, 6, 7 — "第二关有遮挡物")
+    if (obstacleShields.length > 0) {
+      obstacleAngle += (layout.obstacleSpeed || -0.50) * clampedDt;
+      obstaclesGroup.rotation.z = obstacleAngle;
+      for (const sh of obstacleShields) {
+        sh.mesh.rotation.z = -obstacleAngle;
+        if (sh.bounceTimer > 0) {
+          sh.bounceTimer = Math.max(0, sh.bounceTimer - clampedDt);
+          const s = 1.0 + Math.sin(sh.bounceTimer * 28.0) * 0.25 * sh.bounceTimer;
+          sh.mesh.scale.set(s, s, 1.0);
+        } else {
+          sh.mesh.scale.set(1, 1, 1);
+        }
+      }
+    }
 
     // Chase marquee bulbs around wheel perimeter
     for (let i = 0; i < marqueeBulbs.length; i++) {
@@ -1170,7 +1672,7 @@ export function createDartScene(canvas, callbacks = {}) {
       marqueeBulbs[i].scale.setScalar(0.92 + 0.22 * Math.max(0, wave));
     }
 
-    // 2. Update each Smiling Critter Target Pad (keep upright + animate cute yell squash & stretch!)
+    // 4. Update each Smiling Critter Target Pad (keep upright + animate cute yell squash & stretch)
     for (const pad of critterTargets) {
       if (!pad.isCenter && layout.bobAmplitude > 0) {
         const r =
@@ -1180,16 +1682,18 @@ export function createDartScene(canvas, callbacks = {}) {
         pad.padGroup.position.y = Math.sin(pad.baseAngle) * r;
       }
 
-      // Keep Critter upright as wheel spins + gentle joyful sway
       const sway = Math.sin(elapsed * 3.2 + pad.index * 0.9) * 0.06;
       pad.uprightGroup.rotation.z = -wheelAngle + sway;
+
+      if (pad.hazardSign) {
+        pad.hazardSign.scale.setScalar(1.0 + Math.sin(elapsed * 7.0 + pad.index) * 0.16);
+      }
 
       if (pad.yellTimer > 0) {
         pad.yellTimer = Math.max(0, pad.yellTimer - clampedDt);
         const u = 1.0 - pad.yellTimer / pad.yellDuration;
         const env = Math.sin(u * Math.PI);
 
-        // Pop forward in 3D + bouncy squash-and-stretch celebration!
         pad.uprightGroup.position.z = 0.14 + env * 0.42;
         const sx = 1.0 + Math.sin(u * Math.PI * 5.0) * 0.26 * (1.0 - u * 0.5);
         const sy = 1.0 - Math.sin(u * Math.PI * 5.0) * 0.22 * (1.0 - u * 0.5) + env * 0.25;
@@ -1197,7 +1701,6 @@ export function createDartScene(canvas, callbacks = {}) {
         pad.uprightGroup.rotation.z =
           -wheelAngle + Math.sin(u * Math.PI * 8.0) * 0.24 * (1.0 - u);
 
-        // Expand 3D sonic yell wave rings from mouth
         pad.yellRings.forEach((yr, idx) => {
           const ru = (u * 1.6 + idx * 0.35) % 1.0;
           yr.mesh.visible = true;
@@ -1205,7 +1708,6 @@ export function createDartScene(canvas, callbacks = {}) {
           yr.mat.opacity = Math.max(0, (1.0 - ru) * 0.85 * env);
         });
       } else {
-        // Gentle idle breathing pulse on the target
         const breathe = 1.0 + Math.sin(elapsed * 3.6 + pad.index) * 0.035;
         pad.uprightGroup.position.z = 0.14;
         pad.portraitMesh.scale.set(breathe, breathe, 1.0);
@@ -1219,7 +1721,7 @@ export function createDartScene(canvas, callbacks = {}) {
       }
     }
 
-    // 3. Animate the 2 3D Articulated Stage Cheerleader Critters (CatNap & DogDay)
+    // 5. Animate the 2 3D Articulated Stage Cheerleader Critters (CatNap & DogDay)
     for (let i = 0; i < stageCheerCritters.length; i++) {
       const ch = stageCheerCritters[i];
       const { rig } = ch;
@@ -1240,35 +1742,80 @@ export function createDartScene(canvas, callbacks = {}) {
       }
     }
 
-    // 4. Gentle figure-8 sweep of aim crosshair when player hasn't manually dragged recently
+    // 6. Gentle figure-8 sweep of aim crosshair when player hasn't manually moved pointer recently
     if (manualAimHoldTimer > 0) {
       manualAimHoldTimer = Math.max(0, manualAimHoldTimer - clampedDt);
       if (manualAimHoldTimer === 0) manualAimActive = false;
     }
     if (!manualAimActive) {
-      const sweepR = layout.outerRadius * 0.92;
-      aimWorldPos.x = WHEEL_CENTER.x + Math.cos(elapsed * 1.15) * sweepR;
-      aimWorldPos.y = WHEEL_CENTER.y + Math.sin(elapsed * 1.72) * sweepR * 0.85;
-      aimWorldPos.z = TARGET_PLANE_Z;
+      const sweepR = layout.outerRadius * 0.96;
+      const desiredImpact = new THREE.Vector3(
+        boardCenter.x + Math.cos(elapsed * 0.95) * sweepR,
+        boardCenter.y + Math.sin(elapsed * 1.35) * sweepR * 0.82,
+        TARGET_PLANE_Z
+      );
+      aimWorldPos.copy(desiredImpact);
+      sightWorldPos.copy(computeSightFromDesiredImpact(desiredImpact));
     }
     updateAimVisuals(elapsed);
 
     // Launcher recoil recovery
     previewDartHolder.position.z *= Math.pow(0.001, clampedDt);
 
-    // 5. Substepped 120Hz Flying Dart Physics
+    // 7. Substepped Flying Dart Ballistic Trajectory & 3D Obstacle Shield Interception
     for (let i = flyingDarts.length - 1; i >= 0; i--) {
       const f = flyingDarts[i];
       f.elapsed += clampedDt;
       const u = Math.min(1.0, f.elapsed / f.duration);
-      const pos = sampleParabolicArc(f.startPos, f.endPos, u, 0.65);
+      const pos = sampleParabolicArc(f.startPos, f.endPos, u);
       const nextU = Math.min(1.0, u + 0.04);
-      const nextPos = sampleParabolicArc(f.startPos, f.endPos, nextU, 0.65);
+      const nextPos = sampleParabolicArc(f.startPos, f.endPos, nextU);
       f.mesh.position.copy(pos);
       if (nextU > u) {
         f.mesh.lookAt(nextPos);
       }
       f.mesh.rotateZ(elapsed * 12.0);
+
+      // Check 3D Obstacle Shield collision when dart reaches the obstacle plane (u in [0.80, 0.90])
+      if (!f.checkedObstacle && u >= 0.83 && obstacleShields.length > 0) {
+        f.checkedObstacle = true;
+        let hitShield = null;
+        const shieldWorld = new THREE.Vector3();
+        for (const sh of obstacleShields) {
+          sh.mesh.getWorldPosition(shieldWorld);
+          const dist = Math.hypot(pos.x - shieldWorld.x, pos.y - shieldWorld.y);
+          if (dist <= sh.hitRadius * 0.96) {
+            hitShield = { sh, shieldWorld: shieldWorld.clone() };
+            break;
+          }
+        }
+        if (hitShield) {
+          flyingDarts.splice(i, 1);
+          hitShield.sh.bounceTimer = 0.55;
+          spawnHitBurst(pos, 0xf59e0b, 12);
+
+          // Spawn a 3D bouncing/ricocheting dart that clangs off the shield!
+          deflectedDarts.push({
+            mesh: f.mesh,
+            vx: (Math.random() - 0.5) * 3.5,
+            vy: 2.4 + Math.random() * 1.5,
+            vz: 3.2,
+            life: 0.55,
+          });
+
+          if (f.batchTracker && !f.batchTracker.penaltyApplied && !f.batchTracker.anyCritterHit) {
+            f.batchTracker.penaltyApplied = true;
+            const screenPt = worldToScreen(hitShield.shieldWorld);
+            if (callbacks.onObstacleHit) {
+              callbacks.onObstacleHit({
+                screenX: screenPt.x,
+                screenY: screenPt.y,
+              });
+            }
+          }
+          continue;
+        }
+      }
 
       if (u >= 1.0) {
         flyingDarts.splice(i, 1);
@@ -1276,7 +1823,24 @@ export function createDartScene(canvas, callbacks = {}) {
       }
     }
 
-    // 6. Pinned Dart Spring Wobble
+    // Animate deflected darts bouncing off 3D obstacle shields
+    for (let i = deflectedDarts.length - 1; i >= 0; i--) {
+      const d = deflectedDarts[i];
+      d.life -= clampedDt;
+      if (d.life <= 0) {
+        scene.remove(d.mesh);
+        deflectedDarts.splice(i, 1);
+        continue;
+      }
+      d.vy -= 12.0 * clampedDt;
+      d.mesh.position.x += d.vx * clampedDt;
+      d.mesh.position.y += d.vy * clampedDt;
+      d.mesh.position.z += d.vz * clampedDt;
+      d.mesh.rotation.x += 14.0 * clampedDt;
+      d.mesh.rotation.y += 11.0 * clampedDt;
+    }
+
+    // 8. Pinned Dart Spring Wobble
     for (const pd of pinnedDarts) {
       if (pd.wobbleTimer > 0) {
         pd.wobbleTimer = Math.max(0, pd.wobbleTimer - clampedDt);
@@ -1288,7 +1852,7 @@ export function createDartScene(canvas, callbacks = {}) {
       }
     }
 
-    // 7. Update 3D Star/Heart Burst Particles
+    // 9. Update 3D Star/Heart Burst Particles
     for (let i = burstParticles.length - 1; i >= 0; i--) {
       const p = burstParticles[i];
       p.life -= clampedDt;
@@ -1307,7 +1871,7 @@ export function createDartScene(canvas, callbacks = {}) {
       p.mesh.scale.setScalar(Math.max(0.01, p.life / p.maxLife));
     }
 
-    // 8. Subtle Post-Lerp Positional Camera Shake (strictly <= 0.08 units, zero rotational shake)
+    // 10. Subtle Post-Lerp Positional Camera Shake (<= 0.08 units, zero rotational shake)
     if (trauma > 0) {
       trauma = Math.max(0, trauma - clampedDt * 2.8);
       const shake = trauma * trauma * 0.075;
@@ -1335,6 +1899,7 @@ export function createDartScene(canvas, callbacks = {}) {
         critterId: pad.critterId,
         yellWord: pad.meta.yellWord,
         isCenter: pad.isCenter,
+        isBad: pad.isBad,
         hitCount: pad.hitCount,
         x: Math.round(sp.x),
         y: Math.round(sp.y),
@@ -1362,9 +1927,14 @@ export function createDartScene(canvas, callbacks = {}) {
     refreshPreviewDart,
     setAimFromClient,
     shootDartAt,
+    getLeadPredictedSightForPad,
+    computeBallisticImpactFromSight,
+    computeSightFromDesiredImpact,
     getTargetScreenPositions,
     getCritterPadWorldPosition,
     getCritterTargets: () => critterTargets,
-    getFlyingDartCount: () => flyingDarts.length,
+    getObstacleShields: () => obstacleShields,
+    getBoardPosition: () => wheelMountGroup.position.clone(),
+    getFlyingDartCount: () => flyingDarts.length + deflectedDarts.length,
   };
 }

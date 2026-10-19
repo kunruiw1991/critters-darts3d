@@ -400,6 +400,110 @@ export const DartAudio = {
   },
 
   /**
+   * Gentle cartoon "woop-boing" miss sound when hitting empty board or missing (-15 pts)
+   */
+  playMissPenalty() {
+    const audioCtx = ensureContext();
+    if (!audioCtx || muted) return;
+    if (!canTrigger('miss', 45)) return;
+    const now = audioCtx.currentTime;
+
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.type = 'triangle';
+    osc.frequency.setValueAtTime(340, now);
+    osc.frequency.exponentialRampToValueAtTime(155, now + 0.22);
+    gain.gain.setValueAtTime(0.001, now);
+    gain.gain.linearRampToValueAtTime(0.24, now + 0.015);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.24);
+    osc.connect(gain).connect(masterGain);
+    osc.start(now);
+    osc.stop(now + 0.25);
+  },
+
+  /**
+   * Playful candy-shield bounce clang when a dart hits a 3D obstacle in Stage 2+ (-15 pts)
+   */
+  playObstacleClang() {
+    const audioCtx = ensureContext();
+    if (!audioCtx || muted) return;
+    if (!canTrigger('obstacle', 45)) return;
+    const now = audioCtx.currentTime;
+
+    // Bouncy spring boing
+    const osc = audioCtx.createOscillator();
+    const lfo = audioCtx.createOscillator();
+    const lfoGain = audioCtx.createGain();
+    const gain = audioCtx.createGain();
+
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(240, now);
+    osc.frequency.exponentialRampToValueAtTime(420, now + 0.09);
+    osc.frequency.exponentialRampToValueAtTime(190, now + 0.28);
+
+    lfo.type = 'sine';
+    lfo.frequency.setValueAtTime(26, now);
+    lfoGain.gain.setValueAtTime(45, now);
+    lfo.connect(lfoGain).connect(osc.frequency);
+
+    gain.gain.setValueAtTime(0.001, now);
+    gain.gain.linearRampToValueAtTime(0.28, now + 0.01);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.30);
+
+    osc.connect(gain).connect(masterGain);
+    osc.start(now);
+    lfo.start(now);
+    osc.stop(now + 0.31);
+    lfo.stop(now + 0.31);
+  },
+
+  /**
+   * Mischievous naughty Baba Chops "Baa-ha-ha!" bleat when hitting Bad Baba in Stage 4+ (-25 pts)
+   */
+  playBadBabaYell() {
+    const audioCtx = ensureContext();
+    if (!audioCtx || muted) return;
+    if (!canTrigger('bad_baba', 60)) return;
+    const now = audioCtx.currentTime;
+
+    const naughtySyllables = [
+      { f0Start: 390, f0Peak: 460, f0End: 330, dur: 0.16, f1: [700, 780], f2: [1450, 1320], vibHz: 22.0, vibDepth: 32 },
+      { f0Start: 350, f0Peak: 410, f0End: 280, dur: 0.16, f1: [680, 740], f2: [1400, 1280], vibHz: 22.0, vibDepth: 32 },
+      { f0Start: 310, f0Peak: 360, f0End: 220, dur: 0.24, f1: [640, 700], f2: [1350, 1180], vibHz: 24.0, vibDepth: 36 },
+    ];
+    let cursor = now + 0.01;
+    for (const syl of naughtySyllables) {
+      scheduleFormantSyllable(audioCtx, masterGain, syl, cursor, 1.0);
+      cursor += syl.dur + 0.025;
+    }
+
+    // Descending mischievous minor notes
+    [440, 392, 329.63].forEach((hz, i) => {
+      scheduleKalimbaNote(audioCtx, masterGain, hz, now + 0.04 + i * 0.09, 0.22, 0.16);
+    });
+  },
+
+  /**
+   * Gentle kid-friendly cartoon "Oops / Out" cadence when score drops too negative
+   */
+  playOutBust() {
+    const audioCtx = ensureContext();
+    if (!audioCtx || muted) return;
+    const now = audioCtx.currentTime;
+    const notes = [392.0, 369.99, 349.23, 293.66];
+    notes.forEach((hz, i) => {
+      scheduleKalimbaNote(
+        audioCtx,
+        masterGain,
+        hz,
+        now + i * 0.13,
+        i === 3 ? 0.45 : 0.22,
+        0.22
+      );
+    });
+  },
+
+  /**
    * Plays an unmistakable, adorable formant-synthesized cute vocal yell for the hit Smiling Critter!
    */
   playCuteCritterYell(critterId = 'catnap', combo = 1) {

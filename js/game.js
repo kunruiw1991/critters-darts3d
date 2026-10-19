@@ -1,22 +1,33 @@
-import { createDartScene, CRITTER_META } from './scene3d.js';
+import { createDartScene, CRITTER_META, STAGE_LAYOUTS } from './scene3d.js';
 import { DartAudio } from './audio.js';
 
-const RIVAL_SCORES = [480, 320, 180, 90];
+// Gentle, 5-year-old-friendly Top-3 Podium qualification thresholds
+const RIVAL_SCORES = [210, 140, 80, 35];
 const RIVAL_CRITTERS = ['dogday', 'catnap', 'bobby', 'hoppy'];
 const PLAYER_CRITTER = 'craftycorn';
-const MAX_DARTS_PER_STAGE = 10;
+const MAX_DARTS_PER_STAGE = 12;
+
+// Penalties & Negative Score Out ("射丢了罚分，分数太负就出局了")
+export const MISS_PENALTY = -15;
+export const OBSTACLE_PENALTY = -15;
+export const BAD_BABA_PENALTY = -25;
+export const BUST_SCORE_THRESHOLD = -45;
 
 const state = {
   stage: 1,
-  maxStages: 3,
+  maxStages: 7,
   score: 0,
   combo: 0,
   hits: 0,
+  misses: 0,
+  obstacleHits: 0,
+  badBabaHits: 0,
   yells: 0,
   dartsLeft: MAX_DARTS_PER_STAGE,
   maxDarts: MAX_DARTS_PER_STAGE,
   dartType: 'normal',
   roundOver: false,
+  isBusted: false,
   rank: 5,
   stars: 0,
   elapsed: 0,
@@ -27,7 +38,10 @@ const state = {
 let sceneApi = null;
 let roundFinishTimer = 0;
 
-function computeRankAndStars(score) {
+function computeRankAndStars(score, isBusted = false) {
+  if (isBusted || score <= BUST_SCORE_THRESHOLD) {
+    return { rank: 5, stars: 0 };
+  }
   let rank = 1;
   for (const rScore of RIVAL_SCORES) {
     if (score < rScore) rank += 1;
@@ -77,11 +91,10 @@ function clearYellBadges() {
   activeYellBadges.length = 0;
 }
 
-function spawnFloatingYellBadge({ critterId, yellWord, points, screenX, screenY }) {
+function spawnFloatingYellBadge({ critterId, yellWord, points, screenX, screenY, isNegative = false }) {
   const layer = document.getElementById('yellPopupLayer');
   if (!layer) return;
 
-  // Keep at most 2 active floating badges so the screen stays bright and clean
   while (activeYellBadges.length >= 2) {
     const oldest = activeYellBadges.shift();
     if (oldest && oldest.el && oldest.el.parentNode) {
@@ -90,94 +103,166 @@ function spawnFloatingYellBadge({ critterId, yellWord, points, screenX, screenY 
   }
 
   const badge = document.createElement('div');
-  badge.className = 'yell-popup-badge';
+  badge.className = `yell-popup-badge ${isNegative ? 'penalty-badge' : ''}`;
   const clampedX = Math.max(115, Math.min((window.innerWidth || 1280) - 115, screenX || 640));
   const clampedY = Math.max(115, Math.min((window.innerHeight || 800) - 170, screenY || 320));
   badge.style.left = `${clampedX}px`;
   badge.style.top = `${clampedY}px`;
 
+  const signStr = points > 0 ? `+${points}` : `${points}`;
+  const avatarHtml = critterId
+    ? `<div class="yell-popup-avatar" style="background-image:url('./assets/${critterId}.png')"></div>`
+    : '';
+
   badge.innerHTML = `
-    <div class="yell-popup-avatar" style="background-image:url('./assets/${critterId}.png')"></div>
+    ${avatarHtml}
     <span class="yell-popup-word">${yellWord}</span>
-    <span class="yell-popup-pts">+${points}</span>
+    <span class="yell-popup-pts ${isNegative ? 'neg-pts' : ''}">${signStr}</span>
   `;
   layer.appendChild(badge);
-  activeYellBadges.push({ el: badge, age: 0, life: 1.45, maxLife: 1.45 });
+  activeYellBadges.push({ el: badge, age: 0, life: 1.35, maxLife: 1.35 });
+}
+
+function checkBustCondition() {
+  if (!state.roundOver && state.score <= BUST_SCORE_THRESHOLD) {
+    state.isBusted = true;
+    state.roundOver = true;
+    state.rank = 5;
+    state.stars = 0;
+    DartAudio.playOutBust();
+    showPodiumModal();
+    return true;
+  }
+  return false;
 }
 
 function handleCritterHit({ critterId, meta, isCenter, dartType, screenX, screenY }) {
+  if (state.roundOver) return;
   state.combo += 1;
   state.hits += 1;
   state.yells += 1;
   state.lastYellCritter = critterId;
   state.lastYellWord = meta.yellWord;
 
-  const basePts = isCenter ? 85 : 55;
-  const comboBonus = Math.min(60, (state.combo - 1) * 15);
+  const basePts = isCenter ? 65 : 45;
+  const comboBonus = Math.min(45, (state.combo - 1) * 15);
   const gained = basePts + comboBonus;
   state.score += gained;
 
-  // Trigger adorable formant-synthesized cute vocal yell!
   DartAudio.playCuteCritterYell(critterId, state.combo);
 
-  // Spawn bright picture + 1-word cute yell badge over the hit Critter
   spawnFloatingYellBadge({
     critterId,
     yellWord: meta.yellWord,
     points: gained,
     screenX,
     screenY,
+    isNegative: false,
   });
 
   updateHud();
 }
 
-function handleBoardHit({ distRatio, screenX, screenY }) {
-  // Hitting the board without hitting a Critter awards ring points and resets Critter streak
+function handleBadCritterHit({ critterId, meta, screenX, screenY }) {
+  if (state.roundOver) return;
   state.combo = 0;
-  const ringPts = distRatio < 0.35 ? 30 : distRatio < 0.70 ? 20 : 10;
-  state.score += ringPts;
-  DartAudio.playBoardThud(distRatio < 0.35);
+  state.badBabaHits += 1;
+  state.lastYellCritter = critterId;
+  state.lastYellWord = 'BAD!';
+  state.score += BAD_BABA_PENALTY;
 
-  // Hit the dartboard between Critters — award board ring points
-  const layer = document.getElementById('yellPopupLayer');
-  if (layer) {
-    while (activeYellBadges.length >= 2) {
-      const oldest = activeYellBadges.shift();
-      if (oldest && oldest.el && oldest.el.parentNode) {
-        oldest.el.parentNode.removeChild(oldest.el);
-      }
-    }
-    const badge = document.createElement('div');
-    badge.className = 'yell-popup-badge board-hit';
-    badge.style.left = `${Math.max(95, Math.min((window.innerWidth || 1280) - 95, screenX || 640))}px`;
-    badge.style.top = `${Math.max(110, Math.min((window.innerHeight || 800) - 160, screenY || 360))}px`;
-    badge.innerHTML = `<span class="yell-popup-word">HIT!</span><span class="yell-popup-pts">+${ringPts}</span>`;
-    layer.appendChild(badge);
-    activeYellBadges.push({ el: badge, age: 0, life: 0.95, maxLife: 0.95 });
-  }
+  DartAudio.playBadBabaYell();
+
+  spawnFloatingYellBadge({
+    critterId: 'baba',
+    yellWord: 'BAD!',
+    points: BAD_BABA_PENALTY,
+    screenX,
+    screenY,
+    isNegative: true,
+  });
 
   updateHud();
+  checkBustCondition();
+}
+
+function handleObstacleHit({ screenX, screenY }) {
+  if (state.roundOver) return;
+  state.combo = 0;
+  state.obstacleHits += 1;
+  state.score += OBSTACLE_PENALTY;
+
+  DartAudio.playObstacleClang();
+
+  spawnFloatingYellBadge({
+    critterId: null,
+    yellWord: 'BLOCK!',
+    points: OBSTACLE_PENALTY,
+    screenX,
+    screenY,
+    isNegative: true,
+  });
+
+  updateHud();
+  checkBustCondition();
+}
+
+function handleBoardMiss({ screenX, screenY }) {
+  if (state.roundOver) return;
+  state.combo = 0;
+  state.misses += 1;
+  state.score += MISS_PENALTY;
+
+  DartAudio.playMissPenalty();
+
+  spawnFloatingYellBadge({
+    critterId: null,
+    yellWord: 'MISS!',
+    points: MISS_PENALTY,
+    screenX,
+    screenY,
+    isNegative: true,
+  });
+
+  updateHud();
+  checkBustCondition();
 }
 
 function updateHud() {
   const stageText = document.getElementById('stageLabel');
   if (stageText) stageText.textContent = `STAGE ${state.stage}`;
 
-  const crowns = document.querySelectorAll('.stage-crown');
-  crowns.forEach((el, idx) => {
-    const sNum = idx + 1;
-    el.classList.toggle('active', sNum === state.stage);
-    el.classList.toggle('done', sNum < state.stage);
-  });
+  // Update active stage hazard picture badges (Shield, Move, Bad Baba)
+  const layout = STAGE_LAYOUTS[state.stage] || STAGE_LAYOUTS[1];
+  const shieldIcon = document.getElementById('ruleIconShield');
+  const moveIcon = document.getElementById('ruleIconMove');
+  const babaIcon = document.getElementById('ruleIconBaba');
+  if (shieldIcon) shieldIcon.classList.toggle('active', (layout.obstacles || 0) > 0);
+  if (moveIcon) moveIcon.classList.toggle('active', (layout.moveAmpX || 0) > 0);
+  if (babaIcon) babaIcon.classList.toggle('active', (layout.badBabaIndices || []).length > 0);
 
   const scoreText = document.getElementById('scoreLabel');
-  if (scoreText) scoreText.textContent = `SCORE ${state.score}`;
+  const scorePill = document.getElementById('scorePill');
+  if (scoreText) {
+    scoreText.textContent = `SCORE ${state.score}`;
+    scoreText.classList.toggle('negative', state.score < 0);
+  }
+  if (scorePill) {
+    scorePill.classList.toggle('danger-negative', state.score < 0);
+  }
 
   const barFill = document.getElementById('scoreBarFill');
+  const bustFill = document.getElementById('bustBarFill');
   if (barFill) {
-    const pct = Math.min(100, Math.round((state.score / RIVAL_SCORES[0]) * 100));
+    const pct = state.score > 0 ? Math.min(100, Math.round((state.score / RIVAL_SCORES[0]) * 100)) : 0;
     barFill.style.width = `${pct}%`;
+  }
+  if (bustFill) {
+    const negPct =
+      state.score < 0
+        ? Math.min(100, Math.round((Math.abs(state.score) / Math.abs(BUST_SCORE_THRESHOLD)) * 100))
+        : 0;
+    bustFill.style.width = `${negPct}%`;
   }
 
   const star1 = document.getElementById('hudStar1');
@@ -197,7 +282,6 @@ function updateHud() {
     });
   }
 
-  // Highlight active dart picture button
   const btnMap = {
     normal: document.getElementById('btnDartNormal'),
     triple: document.getElementById('btnDartTriple'),
@@ -216,14 +300,14 @@ function selectDartType(dartType) {
   updateHud();
 }
 
-function fireCurrentDart(targetWorldPos = null) {
+function fireCurrentDart(sightWorldPos = null, isDirectImpactPoint = false) {
   if (state.roundOver || state.dartsLeft <= 0) return false;
   if (!sceneApi) return false;
 
   state.dartsLeft -= 1;
-  roundFinishTimer = 0.55;
+  roundFinishTimer = 0.65;
   DartAudio.playDartThrow(state.dartType);
-  sceneApi.shootDartAt(targetWorldPos, state.dartType);
+  sceneApi.shootDartAt(sightWorldPos, state.dartType, isDirectImpactPoint);
   updateHud();
   return true;
 }
@@ -232,11 +316,10 @@ function showPodiumModal() {
   const modal = document.getElementById('podiumModal');
   if (!modal) return;
 
-  const { rank, stars } = computeRankAndStars(state.score);
+  const { rank, stars } = computeRankAndStars(state.score, state.isBusted);
   state.rank = rank;
   state.stars = stars;
 
-  // Build 5-Critter sorted standings
   const entries = [
     { critterId: PLAYER_CRITTER, score: state.score, isPlayer: true },
     ...RIVAL_CRITTERS.map((cid, idx) => ({
@@ -259,7 +342,11 @@ function showPodiumModal() {
 
   const titleEl = document.getElementById('podiumStatusWord');
   if (titleEl) {
-    titleEl.textContent = stars >= 3 ? 'WIN!' : stars >= 1 ? 'CLEAR!' : 'TRY!';
+    if (state.isBusted) {
+      titleEl.textContent = 'OUT!';
+    } else {
+      titleEl.textContent = stars >= 3 ? 'WIN!' : stars >= 1 ? 'CLEAR!' : 'TRY!';
+    }
   }
 
   const rowsContainer = document.getElementById('podiumList');
@@ -269,12 +356,13 @@ function showPodiumModal() {
         const rNum = idx + 1;
         const badgeColor =
           rNum === 1 ? '#fbbf24' : rNum === 2 ? '#cbd5e1' : rNum === 3 ? '#f59e0b' : '#e2e8f0';
+        const barPct = Math.max(0, Math.min(100, Math.round((Math.max(0, item.score) / 240) * 100)));
         return `
           <div class="podium-row ${item.isPlayer ? 'player-row' : ''} ${rNum <= 3 ? 'top3-row' : ''}">
             <div class="podium-rank-circle" style="background:${badgeColor}">${rNum}</div>
             <img class="podium-avatar" src="./assets/${item.critterId}.png" alt="${item.critterId}" />
             <div class="podium-bar-wrap">
-              <div class="podium-bar-fill" style="width:${Math.min(100, Math.round((item.score / 540) * 100))}%"></div>
+              <div class="podium-bar-fill" style="width:${barPct}%"></div>
             </div>
             <div class="podium-score-num">${item.score}</div>
           </div>
@@ -283,10 +371,10 @@ function showPodiumModal() {
       .join('');
   }
 
-  // Strict Top-3 Podium Qualification: only show NEXT button when rank <= 3 (stars >= 1)
+  // Strict Top-3 Podium Qualification: only show NEXT button when rank <= 3 (stars >= 1) and not Busted
   const nextBtn = document.getElementById('btnNextStage');
   if (nextBtn) {
-    nextBtn.style.display = stars >= 1 ? 'flex' : 'none';
+    nextBtn.style.display = stars >= 1 && !state.isBusted ? 'flex' : 'none';
   }
 
   modal.classList.add('visible');
@@ -303,9 +391,13 @@ function startStage(stageNum = 1) {
   state.score = 0;
   state.combo = 0;
   state.hits = 0;
+  state.misses = 0;
+  state.obstacleHits = 0;
+  state.badBabaHits = 0;
   state.yells = 0;
   state.dartsLeft = state.maxDarts;
   state.roundOver = false;
+  state.isBusted = false;
   state.rank = 5;
   state.stars = 0;
   roundFinishTimer = 0;
@@ -326,14 +418,13 @@ function stepSingleSubstep(dt, shouldRender = true) {
     sceneApi.step(dt, state.elapsed, shouldRender);
   }
 
-  // Check if all darts have been thrown and all flying darts have landed
   if (!state.roundOver && state.dartsLeft <= 0) {
     const inFlight = sceneApi ? sceneApi.getFlyingDartCount() : 0;
     if (inFlight === 0) {
       roundFinishTimer -= dt;
       if (roundFinishTimer <= 0) {
         state.roundOver = true;
-        const { rank, stars } = computeRankAndStars(state.score);
+        const { rank, stars } = computeRankAndStars(state.score, state.isBusted);
         state.rank = rank;
         state.stars = stars;
         DartAudio.playWaveResult(stars);
@@ -357,7 +448,6 @@ function initGame() {
   const canvas = document.getElementById('gameCanvas');
   if (!canvas) return;
 
-  // Populate visual dart pips in top-right HUD
   const dartPipsWrap = document.getElementById('dartPips');
   if (dartPipsWrap) {
     dartPipsWrap.innerHTML = Array.from({ length: state.maxDarts })
@@ -374,26 +464,22 @@ function initGame() {
 
   sceneApi = createDartScene(canvas, {
     onCritterHit: handleCritterHit,
-    onBoardHit: handleBoardHit,
+    onBadCritterHit: handleBadCritterHit,
+    onObstacleHit: handleObstacleHit,
+    onBoardMiss: handleBoardMiss,
   });
 
-  // Direct 1:1 Pointer Aim & Shoot on the 3D Canvas
-  let pointerDown = false;
+  // Parabolic Curve & Lead-Prediction Aiming on the 3D Canvas ("射飞镖要有曲线预判的引擎，不能点哪儿就是哪儿")
   canvas.addEventListener('pointerdown', (e) => {
     if (state.roundOver) return;
     DartAudio.init();
-    pointerDown = true;
-    const pt = sceneApi.setAimFromClient(e.clientX, e.clientY);
-    fireCurrentDart(pt);
+    const sightPt = sceneApi.setAimFromClient(e.clientX, e.clientY);
+    fireCurrentDart(sightPt, false);
   });
 
   canvas.addEventListener('pointermove', (e) => {
     if (state.roundOver) return;
     sceneApi.setAimFromClient(e.clientX, e.clientY);
-  });
-
-  window.addEventListener('pointerup', () => {
-    pointerDown = false;
   });
 
   // Top-Left Stage Cycle Picture Button (#stageBtn)
@@ -454,14 +540,14 @@ function initGame() {
     btnShoot.addEventListener('click', (e) => {
       e.stopPropagation();
       DartAudio.init();
-      // Aim directly at a live Critter pad on the wheel when pressing the big SHOOT picture button!
+      // Assistive kid-friendly SHOOT button uses the lead-prediction solver to aim along the parabolic curve!
       const pads = sceneApi.getCritterTargets();
       if (pads && pads.length > 0) {
         const targetIdx = (state.maxDarts - state.dartsLeft) % pads.length;
-        const worldPos = sceneApi.getCritterPadWorldPosition(targetIdx);
-        fireCurrentDart(worldPos);
+        const leadSight = sceneApi.getLeadPredictedSightForPad(targetIdx);
+        fireCurrentDart(leadSight, false);
       } else {
-        fireCurrentDart(null);
+        fireCurrentDart(null, false);
       }
     });
   }
@@ -480,7 +566,7 @@ function initGame() {
   if (btnNext) {
     btnNext.addEventListener('click', (e) => {
       e.stopPropagation();
-      if (state.stars < 1) return;
+      if (state.stars < 1 || state.isBusted) return;
       DartAudio.init();
       const nextS = (state.stage % state.maxStages) + 1;
       DartAudio.playStageSwitch(nextS);
@@ -516,8 +602,15 @@ if (typeof window !== 'undefined') {
     getTargetScreenPositions: () => (sceneApi ? sceneApi.getTargetScreenPositions() : []),
     shootCritterByIndex: (idx = 0) => {
       if (!sceneApi) return false;
-      const worldPos = sceneApi.getCritterPadWorldPosition(idx);
-      return fireCurrentDart(worldPos);
+      const leadSight = sceneApi.getLeadPredictedSightForPad(idx);
+      return fireCurrentDart(leadSight, false);
+    },
+    shootRawAtImpact: (x, y) => {
+      if (!sceneApi) return false;
+      const vec = sceneApi.getCritterPadWorldPosition(0).clone();
+      vec.x = x;
+      vec.y = y;
+      return fireCurrentDart(vec, true);
     },
   };
 }
