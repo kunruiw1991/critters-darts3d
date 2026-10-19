@@ -11,6 +11,7 @@
 
 - **High-Resolution 3D Carnival Stage (`Three.js r161` WebGL)**:
   - **Smaller Critter Target Medallions (~50% of Board Area)**: Ferris-wheel upright-stabilized 3D Smiling Critter target pads (`Bobby BearHug`, `DogDay`, `CatNap`, `Hoppy Hopscotch`, `CraftyCorn`, `PickyPiggy`, `Bubba Bubbaphant`, `KickinChicken`, and `Baba Chops`) occupy ~50% of the dartboard disk area, leaving bright radial wedges and scoring rings exposed so every throw requires real accuracy.
+  - **Peek-a-Boo Center Bullseye Critter (Appears & Disappears Intermittently)**: The high-value `+65` Center Critter pops in and out of the golden bullseye hatch on a `4.2s` peek-a-boo cycle (visible ~45% of the cycle with a golden rim blink warning right before ducking away, and hidden inside the hatch ~55% of the cycle so players cannot simply camp the center!). Shooting the center while the Critter is hidden hits empty board wood (`MISS! -15`).
   - **Full 3D `v11` Smiling Critter Stage Cheerleaders**: High-resolution 3D `CatNap` and `DogDay` plush models (`models/catnap_plush_base_model.glb` and `models/dogday_plush_base_model.glb`) cheering on golden left/right pedestals whenever you hit a friendly Critter!
 
 - **3D Parabolic Ballistic Curve & Lead-Prediction Engine**:

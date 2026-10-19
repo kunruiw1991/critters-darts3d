@@ -997,6 +997,7 @@ export function createDartScene(canvas, callbacks = {}) {
       baseDist,
       padRadius,
       padGroup,
+      cushionMesh,
       uprightGroup,
       portraitMesh,
       padRimMat,
@@ -1006,7 +1007,31 @@ export function createDartScene(canvas, callbacks = {}) {
       hitCount: 0,
       yellTimer: 0,
       yellDuration: 0.95,
+      popFactor: 1.0,
+      isTargetable: true,
     };
+  }
+
+  // Center Critter Peek-a-Boo ("中心那个critter太容易 应该让它时隐时现")
+  const CENTER_PEEKABOO_PERIOD = 4.2;
+
+  function getCenterPopFactorAtTime(t, pad = null) {
+    if (pad && pad.yellTimer > 0) return 1.0;
+    const u = (((t % CENTER_PEEKABOO_PERIOD) + CENTER_PEEKABOO_PERIOD) % CENTER_PEEKABOO_PERIOD) / CENTER_PEEKABOO_PERIOD;
+    if (u < 0.08) {
+      return Math.sin((u / 0.08) * (Math.PI * 0.5));
+    }
+    if (u < 0.44) {
+      return 1.0;
+    }
+    if (u < 0.54) {
+      return Math.cos(((u - 0.44) / 0.10) * (Math.PI * 0.5));
+    }
+    return 0.0;
+  }
+
+  function isCenterTargetableAtTime(t, pad = null) {
+    return getCenterPopFactorAtTime(t, pad) >= 0.45;
   }
 
   function rebuildStageTargets(stageNum = 1) {
@@ -1245,6 +1270,9 @@ export function createDartScene(canvas, callbacks = {}) {
     let closestPad = null;
     let closestDist = Infinity;
     for (const pad of critterTargets) {
+      if (pad.isCenter && !isCenterTargetableAtTime(impactTime, pad)) {
+        continue;
+      }
       let px = futureBoardCenter.x;
       let py = futureBoardCenter.y;
       if (!pad.isCenter) {
@@ -1394,6 +1422,9 @@ export function createDartScene(canvas, callbacks = {}) {
     const hitRadiusBonus = flight.dartType === 'super' ? 0.85 : 0.08;
 
     for (const pad of critterTargets) {
+      if (pad.isCenter && !isCenterTargetableAtTime(sceneElapsed, pad)) {
+        continue;
+      }
       const padWorld = new THREE.Vector3();
       pad.padGroup.getWorldPosition(padWorld);
       const dx = hitWorld.x - padWorld.x;
@@ -1583,17 +1614,18 @@ export function createDartScene(canvas, callbacks = {}) {
    */
   function getLeadPredictedSightForPad(idx = 0) {
     if (!critterTargets.length) return sightWorldPos.clone();
-    // Prefer a non-bad Critter if idx points to a Bad Baba Chops when called by assistive button
+    const impactTime = sceneElapsed + FLIGHT_DURATION;
     let pad = critterTargets[((idx % critterTargets.length) + critterTargets.length) % critterTargets.length];
-    if (pad.isBad) {
-      const goodPads = critterTargets.filter((p) => !p.isBad);
+    if (pad.isBad || (pad.isCenter && !isCenterTargetableAtTime(impactTime, pad))) {
+      const goodPads = critterTargets.filter(
+        (p) => !p.isBad && (!p.isCenter || isCenterTargetableAtTime(impactTime, p))
+      );
       if (goodPads.length > 0) {
         pad = goodPads[idx % goodPads.length];
       }
     }
 
     const layout = STAGE_LAYOUTS[currentStage] || STAGE_LAYOUTS[1];
-    const impactTime = sceneElapsed + FLIGHT_DURATION;
     const futureBoardCenter = getBoardCenterAtTime(impactTime);
     const futureWheelAngle = wheelAngle + layout.wheelSpeed * FLIGHT_DURATION;
 
@@ -1672,9 +1704,29 @@ export function createDartScene(canvas, callbacks = {}) {
       marqueeBulbs[i].scale.setScalar(0.92 + 0.22 * Math.max(0, wave));
     }
 
-    // 4. Update each Smiling Critter Target Pad (keep upright + animate cute yell squash & stretch)
+    // 4. Update each Smiling Critter Target Pad (keep upright + animate cute yell squash & stretch + Center Peek-a-Boo)
     for (const pad of critterTargets) {
-      if (!pad.isCenter && layout.bobAmplitude > 0) {
+      if (pad.isCenter) {
+        const popFactor = getCenterPopFactorAtTime(elapsed, pad);
+        pad.popFactor = popFactor;
+        pad.isTargetable = popFactor >= 0.45;
+        const showCenter = popFactor > 0.04;
+        if (pad.cushionMesh) {
+          pad.cushionMesh.visible = showCenter;
+          pad.cushionMesh.scale.setScalar(Math.max(0.05, popFactor));
+        }
+        pad.uprightGroup.visible = showCenter;
+        // Blink golden bullseye hatch rim right before ducking away
+        const uCycle = (((elapsed % CENTER_PEEKABOO_PERIOD) + CENTER_PEEKABOO_PERIOD) % CENTER_PEEKABOO_PERIOD) / CENTER_PEEKABOO_PERIOD;
+        if (uCycle >= 0.34 && uCycle < 0.44 && pad.yellTimer <= 0) {
+          const blink = Math.sin(elapsed * 28.0) > 0;
+          pad.padRimMat.emissive.setHex(blink ? 0xf59e0b : 0x000000);
+          pad.padRimMat.emissiveIntensity = blink ? 0.55 : 0.0;
+        } else {
+          pad.padRimMat.emissive.setHex(0x000000);
+          pad.padRimMat.emissiveIntensity = 0.0;
+        }
+      } else if (layout.bobAmplitude > 0) {
         const r =
           pad.baseDist +
           Math.sin(elapsed * 2.8 + pad.index * 1.05) * layout.bobAmplitude;
@@ -1689,14 +1741,16 @@ export function createDartScene(canvas, callbacks = {}) {
         pad.hazardSign.scale.setScalar(1.0 + Math.sin(elapsed * 7.0 + pad.index) * 0.16);
       }
 
+      const centerScale = pad.isCenter ? Math.max(0.05, pad.popFactor ?? 1.0) : 1.0;
+
       if (pad.yellTimer > 0) {
         pad.yellTimer = Math.max(0, pad.yellTimer - clampedDt);
         const u = 1.0 - pad.yellTimer / pad.yellDuration;
         const env = Math.sin(u * Math.PI);
 
         pad.uprightGroup.position.z = 0.14 + env * 0.42;
-        const sx = 1.0 + Math.sin(u * Math.PI * 5.0) * 0.26 * (1.0 - u * 0.5);
-        const sy = 1.0 - Math.sin(u * Math.PI * 5.0) * 0.22 * (1.0 - u * 0.5) + env * 0.25;
+        const sx = (1.0 + Math.sin(u * Math.PI * 5.0) * 0.26 * (1.0 - u * 0.5)) * centerScale;
+        const sy = (1.0 - Math.sin(u * Math.PI * 5.0) * 0.22 * (1.0 - u * 0.5) + env * 0.25) * centerScale;
         pad.portraitMesh.scale.set(sx, sy, 1.0);
         pad.uprightGroup.rotation.z =
           -wheelAngle + Math.sin(u * Math.PI * 8.0) * 0.24 * (1.0 - u);
@@ -1708,8 +1762,8 @@ export function createDartScene(canvas, callbacks = {}) {
           yr.mat.opacity = Math.max(0, (1.0 - ru) * 0.85 * env);
         });
       } else {
-        const breathe = 1.0 + Math.sin(elapsed * 3.6 + pad.index) * 0.035;
-        pad.uprightGroup.position.z = 0.14;
+        const breathe = (1.0 + Math.sin(elapsed * 3.6 + pad.index) * 0.035) * centerScale;
+        pad.uprightGroup.position.z = pad.isCenter ? -0.08 * (1.0 - centerScale) + 0.14 * centerScale : 0.14;
         pad.portraitMesh.scale.set(breathe, breathe, 1.0);
         for (const yr of pad.yellRings) {
           yr.mesh.visible = false;
@@ -1900,6 +1954,8 @@ export function createDartScene(canvas, callbacks = {}) {
         yellWord: pad.meta.yellWord,
         isCenter: pad.isCenter,
         isBad: pad.isBad,
+        isTargetable: pad.isCenter ? isCenterTargetableAtTime(sceneElapsed, pad) : true,
+        popFactor: pad.isCenter ? getCenterPopFactorAtTime(sceneElapsed, pad) : 1.0,
         hitCount: pad.hitCount,
         x: Math.round(sp.x),
         y: Math.round(sp.y),

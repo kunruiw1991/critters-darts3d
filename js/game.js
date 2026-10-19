@@ -388,6 +388,7 @@ function hidePodiumModal() {
 function startStage(stageNum = 1) {
   const clamped = ((stageNum - 1) % state.maxStages) + 1;
   state.stage = clamped;
+  state.elapsed = 0;
   state.score = 0;
   state.combo = 0;
   state.hits = 0;
