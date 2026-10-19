@@ -1,0 +1,739 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <meta name="description" content="Critter Darts 3D - High-resolution 3D Smiling Critters carnival dart shooting gallery with cute vocal yells and picture buttons." />
+  <link rel="icon" href="data:," />
+  <title>🎯🐾 Critter Darts 3D</title>
+  <style>
+    *, *::before, *::after {
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: #e0f2fe;
+      font-family: "Fredoka", "Nunito", "Segoe UI", system-ui, -apple-system, sans-serif;
+      touch-action: none;
+    }
+
+    #gameRoot {
+      position: fixed;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+    }
+
+    #gameCanvas {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      display: block;
+      cursor: crosshair;
+      touch-action: none;
+    }
+
+    /* Visually hidden SEO h1 */
+    .sr-only {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      border: 0;
+    }
+
+    /* ==========================================================================
+       TOP BRIGHT HUD BAR (Clean, Sunny, Concise)
+       ========================================================================== */
+    #topHud {
+      position: fixed;
+      top: clamp(8px, 1.5vh, 16px);
+      left: clamp(10px, 2vw, 22px);
+      right: clamp(10px, 2vw, 22px);
+      z-index: 20;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: clamp(8px, 1.4vw, 16px);
+      pointer-events: none;
+    }
+
+    .hud-pill {
+      pointer-events: auto;
+      background: linear-gradient(180deg, #ffffff 0%, #fff8eb 100%);
+      border: 3px solid #6b4226;
+      border-radius: 999px;
+      box-shadow: 0 6px 16px rgba(107, 66, 38, 0.22), inset 0 2px 0 #ffffff;
+      padding: clamp(5px, 0.9vh, 9px) clamp(10px, 1.5vw, 16px);
+      display: flex;
+      align-items: center;
+      gap: clamp(6px, 1vw, 12px);
+    }
+
+    #stageBtn {
+      cursor: pointer;
+      transition: transform 0.16s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+
+    #stageBtn:hover {
+      transform: translateY(-2px) scale(1.03);
+    }
+
+    #stageBtn:active {
+      transform: scale(0.95);
+    }
+
+    .crowns-row {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .stage-crown {
+      width: clamp(20px, 2.4vw, 26px);
+      height: clamp(20px, 2.4vw, 26px);
+      opacity: 0.32;
+      transform: scale(0.88);
+      transition: transform 0.25s ease, opacity 0.25s ease;
+    }
+
+    .stage-crown.active,
+    .stage-crown.done {
+      opacity: 1;
+      transform: scale(1.08);
+      filter: drop-shadow(0 2px 4px rgba(245, 158, 11, 0.6));
+    }
+
+    .hud-word {
+      font-size: clamp(13px, 1.5vw, 17px);
+      font-weight: 900;
+      letter-spacing: 0.04em;
+      color: #4a2c18;
+      white-space: nowrap;
+    }
+
+    /* Center Score & 3-Star Bar */
+    #scorePill {
+      flex: 1 1 auto;
+      max-width: 440px;
+      pointer-events: none;
+    }
+
+    .trophy-icon {
+      width: clamp(24px, 2.8vw, 32px);
+      height: clamp(24px, 2.8vw, 32px);
+      flex-shrink: 0;
+    }
+
+    #scoreBarOuter {
+      position: relative;
+      flex: 1 1 auto;
+      height: clamp(16px, 2.2vh, 22px);
+      background: #fde68a;
+      border: 2.5px solid #6b4226;
+      border-radius: 999px;
+      overflow: visible;
+      box-shadow: inset 0 2px 4px rgba(107, 66, 38, 0.2);
+    }
+
+    #scoreBarFill {
+      height: 100%;
+      width: 0%;
+      border-radius: 999px;
+      background: linear-gradient(90deg, #fb923c 0%, #facc15 55%, #4ade80 100%);
+      transition: width 0.24s cubic-bezier(0.22, 1, 0.36, 1);
+    }
+
+    .hud-star {
+      position: absolute;
+      top: 50%;
+      transform: translate(-50%, -50%) scale(0.88);
+      width: clamp(20px, 2.4vw, 26px);
+      height: clamp(20px, 2.4vw, 26px);
+      filter: grayscale(0.85) opacity(0.55);
+      transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1), filter 0.25s ease;
+    }
+
+    .hud-star.earned {
+      filter: grayscale(0) opacity(1) drop-shadow(0 2px 5px rgba(245, 158, 11, 0.85));
+      transform: translate(-50%, -50%) scale(1.2);
+    }
+
+    /* Right Darts Counter + Sound Toggle Picture Button */
+    #rightHudGroup {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      pointer-events: auto;
+    }
+
+    #dartsPill {
+      pointer-events: none;
+    }
+
+    #dartPips {
+      display: flex;
+      align-items: center;
+      gap: 2px;
+    }
+
+    .dart-pip {
+      width: clamp(14px, 1.6vw, 19px);
+      height: clamp(14px, 1.6vw, 19px);
+      transition: transform 0.2s ease, opacity 0.2s ease;
+    }
+
+    .dart-pip.spent {
+      opacity: 0.22;
+      transform: scale(0.76);
+    }
+
+    #soundBtn {
+      cursor: pointer;
+      transition: transform 0.16s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+
+    #soundBtn:hover {
+      transform: translateY(-2px) scale(1.04);
+    }
+
+    #soundBtn:active {
+      transform: scale(0.94);
+    }
+
+    #soundBtn.muted {
+      background: #f1f5f9;
+      opacity: 0.8;
+    }
+
+    .speaker-svg {
+      width: clamp(22px, 2.5vw, 28px);
+      height: clamp(22px, 2.5vw, 28px);
+    }
+
+    /* ==========================================================================
+       FLOATING CUTE YELL POPUP LAYER
+       ========================================================================== */
+    #yellPopupLayer {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 25;
+      overflow: hidden;
+    }
+
+    .yell-popup-badge {
+      position: absolute;
+      transform: translate(-50%, -65%) scale(1.08);
+      opacity: 1;
+      background: linear-gradient(180deg, #ffffff 0%, #fef08a 100%);
+      border: 4px solid #6b4226;
+      border-radius: 999px;
+      padding: 6px 16px 6px 8px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      box-shadow: 0 6px 0 #6b4226, 0 10px 24px rgba(107, 66, 38, 0.36);
+      will-change: transform, opacity;
+    }
+
+    .yell-popup-badge::after {
+      content: "";
+      position: absolute;
+      bottom: -11px;
+      left: 50%;
+      transform: translateX(-50%);
+      border-width: 11px 9px 0 9px;
+      border-style: solid;
+      border-color: #6b4226 transparent transparent transparent;
+    }
+
+    .yell-popup-avatar {
+      width: 44px;
+      height: 44px;
+      background-size: contain;
+      background-position: center;
+      background-repeat: no-repeat;
+      border-radius: 50%;
+      background-color: #fffbeb;
+      border: 2.5px solid #f59e0b;
+      flex-shrink: 0;
+    }
+
+    .yell-popup-word {
+      font-size: 21px;
+      font-weight: 900;
+      color: #e11d48;
+      letter-spacing: 0.03em;
+      text-shadow: 0 1px 0 #ffffff;
+    }
+
+    .yell-popup-pts {
+      font-size: 18px;
+      font-weight: 900;
+      color: #15803d;
+    }
+
+    /* ==========================================================================
+       BOTTOM PICTURE-BUTTON CONTROL DOCK (4 Big Illustrated Picture Buttons)
+       ========================================================================== */
+    #bottomDock {
+      position: fixed;
+      bottom: clamp(8px, 1.6vh, 18px);
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 20;
+      display: flex;
+      align-items: stretch;
+      justify-content: center;
+      gap: clamp(8px, 1.4vw, 16px);
+      pointer-events: auto;
+    }
+
+    .pic-btn {
+      appearance: none;
+      border: 3.5px solid #6b4226;
+      border-radius: 24px;
+      background: linear-gradient(180deg, #ffffff 0%, #fff3d6 100%);
+      box-shadow: 0 7px 0 #6b4226, 0 11px 22px rgba(107, 66, 38, 0.28);
+      padding: clamp(6px, 1vh, 10px) clamp(12px, 1.8vw, 20px);
+      min-width: clamp(92px, 12vw, 132px);
+      min-height: clamp(78px, 10.5vh, 98px);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      cursor: pointer;
+      transition: transform 0.14s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.14s ease, border-color 0.14s ease;
+    }
+
+    .pic-btn:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 10px 0 #6b4226, 0 14px 26px rgba(107, 66, 38, 0.34);
+    }
+
+    .pic-btn:active {
+      transform: translateY(4px);
+      box-shadow: 0 3px 0 #6b4226, 0 5px 12px rgba(107, 66, 38, 0.25);
+    }
+
+    .pic-btn.active {
+      background: linear-gradient(180deg, #fef08a 0%, #fde047 100%);
+      border-color: #d97706;
+      box-shadow: 0 7px 0 #b45309, 0 0 0 4px rgba(250, 204, 21, 0.55);
+      transform: translateY(-3px) scale(1.04);
+    }
+
+    .pic-btn-art {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      height: clamp(42px, 5.8vh, 54px);
+    }
+
+    .pic-btn-critter {
+      width: clamp(38px, 5vh, 48px);
+      height: clamp(38px, 5vh, 48px);
+      object-fit: contain;
+      filter: drop-shadow(0 2px 4px rgba(74, 44, 24, 0.28));
+    }
+
+    .pic-btn-svg {
+      width: clamp(34px, 4.5vh, 44px);
+      height: clamp(34px, 4.5vh, 44px);
+      flex-shrink: 0;
+    }
+
+    .pic-btn-word {
+      font-size: clamp(12px, 1.4vw, 15px);
+      font-weight: 900;
+      letter-spacing: 0.05em;
+      color: #4a2c18;
+    }
+
+    /* Extra-Vibrant Primary SHOOT Picture Button */
+    #btnShoot {
+      background: linear-gradient(180deg, #ff6b8b 0%, #e11d48 100%);
+      border-color: #881337;
+      box-shadow: 0 7px 0 #881337, 0 12px 24px rgba(225, 29, 72, 0.38);
+      min-width: clamp(110px, 14vw, 152px);
+    }
+
+    #btnShoot .pic-btn-word {
+      color: #ffffff;
+      text-shadow: 0 2px 0 #881337;
+    }
+
+    /* ==========================================================================
+       5-CRITTER TOURNAMENT PODIUM MODAL (Top-3 Qualification)
+       ========================================================================== */
+    #podiumModal {
+      position: fixed;
+      inset: 0;
+      z-index: 40;
+      background: rgba(30, 41, 59, 0.58);
+      backdrop-filter: blur(6px);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+    }
+
+    #podiumModal.visible {
+      display: flex;
+    }
+
+    .podium-card {
+      width: min(92vw, 460px);
+      background: linear-gradient(180deg, #ffffff 0%, #fffbeb 100%);
+      border: 4px solid #6b4226;
+      border-radius: 32px;
+      box-shadow: 0 18px 42px rgba(30, 41, 59, 0.45);
+      padding: 20px 22px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 14px;
+    }
+
+    #podiumStarsRow {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+    }
+
+    .podium-star {
+      width: 48px;
+      height: 48px;
+      filter: grayscale(0.9) opacity(0.35);
+      transform: scale(0.88);
+      transition: transform 0.3s ease, filter 0.3s ease;
+    }
+
+    .podium-star.earned {
+      filter: grayscale(0) opacity(1) drop-shadow(0 4px 8px rgba(245, 158, 11, 0.7));
+      transform: scale(1.12);
+    }
+
+    #podiumStatusWord {
+      font-size: 26px;
+      font-weight: 900;
+      color: #4a2c18;
+      letter-spacing: 0.06em;
+    }
+
+    #podiumList {
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .podium-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: #f8fafc;
+      border: 2.5px solid #cbd5e1;
+      border-radius: 18px;
+      padding: 6px 12px;
+    }
+
+    .podium-row.player-row {
+      background: #fef9c3;
+      border-color: #f59e0b;
+      box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.32);
+    }
+
+    .podium-rank-circle {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      border: 2px solid #4a2c18;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 900;
+      font-size: 14px;
+      color: #4a2c18;
+      flex-shrink: 0;
+    }
+
+    .podium-avatar {
+      width: 40px;
+      height: 40px;
+      object-fit: contain;
+      flex-shrink: 0;
+    }
+
+    .podium-bar-wrap {
+      flex: 1 1 auto;
+      height: 14px;
+      background: #e2e8f0;
+      border-radius: 999px;
+      overflow: hidden;
+      border: 1.5px solid #94a3b8;
+    }
+
+    .podium-bar-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #fb923c, #facc15);
+      border-radius: 999px;
+    }
+
+    .podium-score-num {
+      font-weight: 900;
+      font-size: 16px;
+      color: #4a2c18;
+      min-width: 38px;
+      text-align: right;
+    }
+
+    .podium-actions {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+      width: 100%;
+      margin-top: 4px;
+    }
+
+    @media (max-width: 720px) {
+      #topHud {
+        padding: 0 8px;
+        gap: 4px;
+      }
+      .hud-pill {
+        padding: 5px 9px;
+        gap: 5px;
+      }
+      .hud-word {
+        font-size: 13px;
+      }
+      #scoreBarOuter,
+      #dartPips,
+      #soundLabel,
+      .stage-crown:not(.active) {
+        display: none;
+      }
+      #bottomDock {
+        width: calc(100vw - 16px);
+        max-width: 390px;
+        gap: 6px;
+      }
+      .pic-btn {
+        min-width: 0;
+        flex: 1 1 0;
+        min-height: 68px;
+        padding: 5px 4px;
+        border-radius: 18px;
+      }
+      #btnShoot {
+        min-width: 0;
+        flex: 1.12 1 0;
+      }
+      .pic-btn-critter {
+        width: 28px;
+        height: 28px;
+      }
+      .pic-btn-svg {
+        width: 26px;
+        height: 26px;
+      }
+    }
+
+    @media (max-height: 520px) {
+      .pic-btn {
+        min-height: 64px;
+        padding: 4px 10px;
+      }
+      .pic-btn-art {
+        height: 34px;
+      }
+      .podium-card {
+        padding: 12px 16px;
+        gap: 8px;
+      }
+      .podium-avatar {
+        width: 30px;
+        height: 30px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <h1 class="sr-only">Critter Darts 3D - Smiling Critters Carnival Dart Game</h1>
+
+  <div id="gameRoot">
+    <canvas id="gameCanvas"></canvas>
+
+    <!-- TOP BRIGHT HUD BAR -->
+    <header id="topHud">
+      <!-- Button 1: Stage Switcher Picture Button -->
+      <button id="stageBtn" class="hud-pill" type="button" aria-label="Stage">
+        <div class="crowns-row">
+          <svg class="stage-crown active" viewBox="0 0 32 32">
+            <path d="M4 24 L6 10 L12 16 L16 7 L20 16 L26 10 L28 24 Z" fill="#fbbf24" stroke="#6b4226" stroke-width="2.4" stroke-linejoin="round"/>
+          </svg>
+          <svg class="stage-crown" viewBox="0 0 32 32">
+            <path d="M4 24 L6 10 L12 16 L16 7 L20 16 L26 10 L28 24 Z" fill="#fbbf24" stroke="#6b4226" stroke-width="2.4" stroke-linejoin="round"/>
+          </svg>
+          <svg class="stage-crown" viewBox="0 0 32 32">
+            <path d="M4 24 L6 10 L12 16 L16 7 L20 16 L26 10 L28 24 Z" fill="#fbbf24" stroke="#6b4226" stroke-width="2.4" stroke-linejoin="round"/>
+          </svg>
+        </div>
+        <span id="stageLabel" class="hud-word">STAGE 1</span>
+      </button>
+
+      <!-- Center Score & 3-Star Progress Bar -->
+      <div id="scorePill" class="hud-pill">
+        <svg class="trophy-icon" viewBox="0 0 36 36">
+          <path d="M18 3 L22.5 12.2 L32.6 13.6 L25.3 20.7 L27 30.8 L18 26 L9 30.8 L10.7 20.7 L3.4 13.6 L13.5 12.2 Z" fill="#facc15" stroke="#6b4226" stroke-width="2.4" stroke-linejoin="round"/>
+        </svg>
+        <div id="scoreBarOuter">
+          <div id="scoreBarFill"></div>
+          <svg id="hudStar1" class="hud-star" style="left: 38%" viewBox="0 0 32 32">
+            <path d="M16 3 L20 11 L29 12.3 L22.5 18.6 L24 27.5 L16 23.3 L8 27.5 L9.5 18.6 L3 12.3 L12 11 Z" fill="#fbbf24" stroke="#6b4226" stroke-width="2.2"/>
+          </svg>
+          <svg id="hudStar2" class="hud-star" style="left: 67%" viewBox="0 0 32 32">
+            <path d="M16 3 L20 11 L29 12.3 L22.5 18.6 L24 27.5 L16 23.3 L8 27.5 L9.5 18.6 L3 12.3 L12 11 Z" fill="#fbbf24" stroke="#6b4226" stroke-width="2.2"/>
+          </svg>
+          <svg id="hudStar3" class="hud-star" style="left: 96%" viewBox="0 0 32 32">
+            <path d="M16 3 L20 11 L29 12.3 L22.5 18.6 L24 27.5 L16 23.3 L8 27.5 L9.5 18.6 L3 12.3 L12 11 Z" fill="#fbbf24" stroke="#6b4226" stroke-width="2.2"/>
+          </svg>
+        </div>
+        <span id="scoreLabel" class="hud-word">SCORE 0</span>
+      </div>
+
+      <!-- Right Darts Remaining + Button 2: Sound Toggle Picture Button -->
+      <div id="rightHudGroup">
+        <div id="dartsPill" class="hud-pill">
+          <div id="dartPips"></div>
+          <span id="dartsCountLabel" class="hud-word">10</span>
+        </div>
+        <button id="soundBtn" class="hud-pill" type="button" aria-label="Sound">
+          <svg class="speaker-svg" viewBox="0 0 32 32">
+            <path d="M5 12 H11 L19 5 V27 L11 20 H5 Z" fill="#fb923c" stroke="#6b4226" stroke-width="2.4" stroke-linejoin="round"/>
+            <path d="M23 10 C26 13 26 19 23 22" fill="none" stroke="#6b4226" stroke-width="2.6" stroke-linecap="round"/>
+          </svg>
+          <span id="soundLabel" class="hud-word">SOUND</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- FLOATING CUTE YELL POPUP LAYER -->
+    <div id="yellPopupLayer"></div>
+
+    <!-- BOTTOM PICTURE-BUTTON DOCK (Buttons 3, 4, 5, 6 -> Total <= 6 Clickable Controls) -->
+    <nav id="bottomDock" aria-label="Dart Controls">
+      <!-- Button 3: Normal Rainbow Dart Picture Button -->
+      <button id="btnDartNormal" class="pic-btn active" type="button">
+        <div class="pic-btn-art">
+          <img class="pic-btn-critter" src="./assets/dogday.png" alt="DogDay" />
+          <svg class="pic-btn-svg" viewBox="0 0 48 48">
+            <path d="M24 4 L31 18 L26 18 L28 36 L34 43 L14 43 L20 36 L22 18 L17 18 Z" fill="#ff4757" stroke="#4a2c18" stroke-width="2.8" stroke-linejoin="round"/>
+            <circle cx="24" cy="9" r="3.5" fill="#fde047"/>
+          </svg>
+        </div>
+        <span class="pic-btn-word">DART</span>
+      </button>
+
+      <!-- Button 4: Triple Fan Dart Picture Button -->
+      <button id="btnDartTriple" class="pic-btn" type="button">
+        <div class="pic-btn-art">
+          <img class="pic-btn-critter" src="./assets/hoppy.png" alt="Hoppy" />
+          <svg class="pic-btn-svg" viewBox="0 0 48 48">
+            <path d="M12 8 L17 19 L14 19 L16 36 L9 41 L12 19 L9 19 Z" fill="#38bdf8" stroke="#4a2c18" stroke-width="2.2" stroke-linejoin="round"/>
+            <path d="M36 8 L39 19 L36 19 L39 41 L32 36 L34 19 L31 19 Z" fill="#22c55e" stroke="#4a2c18" stroke-width="2.2" stroke-linejoin="round"/>
+            <path d="M24 4 L30 17 L26 17 L28 38 L20 38 L22 17 L18 17 Z" fill="#ff4757" stroke="#4a2c18" stroke-width="2.5" stroke-linejoin="round"/>
+          </svg>
+        </div>
+        <span class="pic-btn-word">TRIPLE</span>
+      </button>
+
+      <!-- Button 5: Super Star Bomb Dart Picture Button -->
+      <button id="btnDartSuper" class="pic-btn" type="button">
+        <div class="pic-btn-art">
+          <img class="pic-btn-critter" src="./assets/catnap.png" alt="CatNap" />
+          <svg class="pic-btn-svg" viewBox="0 0 48 48">
+            <path d="M24 3 L29.5 14.5 L42 16.3 L33 25 L35.2 37.5 L24 31.5 L12.8 37.5 L15 25 L6 16.3 L18.5 14.5 Z" fill="#facc15" stroke="#4a2c18" stroke-width="2.8" stroke-linejoin="round"/>
+            <circle cx="24" cy="21" r="6" fill="#a855f7" stroke="#4a2c18" stroke-width="2.2"/>
+          </svg>
+        </div>
+        <span class="pic-btn-word">SUPER</span>
+      </button>
+
+      <!-- Button 6: Big Bullseye SHOOT Picture Button -->
+      <button id="btnShoot" class="pic-btn" type="button">
+        <div class="pic-btn-art">
+          <svg class="pic-btn-svg" viewBox="0 0 48 48">
+            <circle cx="24" cy="24" r="19" fill="#ffffff" stroke="#4a2c18" stroke-width="3"/>
+            <circle cx="24" cy="24" r="13" fill="#ff4757"/>
+            <circle cx="24" cy="24" r="7" fill="#facc15" stroke="#4a2c18" stroke-width="2"/>
+            <path d="M38 10 L25 23" stroke="#4a2c18" stroke-width="4" stroke-linecap="round"/>
+            <polygon points="22,26 26,18 30,22" fill="#4a2c18"/>
+          </svg>
+        </div>
+        <span class="pic-btn-word">SHOOT</span>
+      </button>
+    </nav>
+
+    <!-- 5-CRITTER TOURNAMENT PODIUM MODAL -->
+    <div id="podiumModal" role="dialog" aria-label="Results">
+      <div class="podium-card">
+        <div id="podiumStarsRow">
+          <svg class="podium-star" viewBox="0 0 36 36">
+            <path d="M18 3 L22.5 12.2 L32.6 13.6 L25.3 20.7 L27 30.8 L18 26 L9 30.8 L10.7 20.7 L3.4 13.6 L13.5 12.2 Z" fill="#facc15" stroke="#6b4226" stroke-width="2.4" stroke-linejoin="round"/>
+          </svg>
+          <svg class="podium-star" viewBox="0 0 36 36">
+            <path d="M18 3 L22.5 12.2 L32.6 13.6 L25.3 20.7 L27 30.8 L18 26 L9 30.8 L10.7 20.7 L3.4 13.6 L13.5 12.2 Z" fill="#facc15" stroke="#6b4226" stroke-width="2.4" stroke-linejoin="round"/>
+          </svg>
+          <svg class="podium-star" viewBox="0 0 36 36">
+            <path d="M18 3 L22.5 12.2 L32.6 13.6 L25.3 20.7 L27 30.8 L18 26 L9 30.8 L10.7 20.7 L3.4 13.6 L13.5 12.2 Z" fill="#facc15" stroke="#6b4226" stroke-width="2.4" stroke-linejoin="round"/>
+          </svg>
+        </div>
+        <div id="podiumStatusWord">WIN!</div>
+        <div id="podiumList"></div>
+        <div class="podium-actions">
+          <button id="btnRetryStage" class="pic-btn" type="button">
+            <div class="pic-btn-art">
+              <svg class="pic-btn-svg" viewBox="0 0 48 48">
+                <path d="M14 24 A12 12 0 1 1 20 35" fill="none" stroke="#4a2c18" stroke-width="4.5" stroke-linecap="round"/>
+                <polygon points="10,16 20,16 14,26" fill="#ff4757" stroke="#4a2c18" stroke-width="2.2" stroke-linejoin="round"/>
+              </svg>
+            </div>
+            <span class="pic-btn-word">RETRY</span>
+          </button>
+          <button id="btnNextStage" class="pic-btn" type="button" style="background:linear-gradient(180deg,#4ade80 0%,#16a34a 100%);border-color:#14532d;">
+            <div class="pic-btn-art">
+              <svg class="pic-btn-svg" viewBox="0 0 48 48">
+                <path d="M10 24 H34" stroke="#ffffff" stroke-width="5" stroke-linecap="round"/>
+                <polygon points="28,14 40,24 28,34" fill="#fde047" stroke="#14532d" stroke-width="2.5" stroke-linejoin="round"/>
+              </svg>
+            </div>
+            <span class="pic-btn-word" style="color:#ffffff;">NEXT</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="./js/game.js"></script>
+</body>
+</html>
